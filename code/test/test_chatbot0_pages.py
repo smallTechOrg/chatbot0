@@ -186,10 +186,14 @@ def test_signup_script_calls_the_api_like_the_old_sign_up_page(client):
         res = client.get(url, headers=headers)
         assert res.status_code == 200
         js = res.get_data(as_text=True)
-        # same three calls, in order, root-absolute so they reach the API from /chatbot0/ and the chatbot0 host
-        order = [js.index('jsonPost("/domains/", "POST"'), js.index('jsonPost("/prompt", "POST"'),
-                 js.index('jsonPost("/chat-info/contact", "PATCH"')]
+        # two calls, in order, root-absolute so they reach the API from /chatbot0/ and the chatbot0 host.
+        # The contact details go with the domain; /chat-info/contact is for chat visitors, not sign-ups.
+        order = [js.index('jsonPost("/domains/", "POST"'), js.index('jsonPost("/prompt", "POST"')]
         assert order == sorted(order)
+        assert "/chat-info/contact" not in js
+        assert 'website_url: website, contact_name: name' in js
+        assert "domainBody.email = " in js and "domainBody.mobile = " in js
+        assert "domainRes.status === 409" in js
         assert 'agent_type: "sales"' in js and 'type: "company"' in js
         assert 'var WIDGET_ORIGIN = "https://zer0.smalltech.in";' in js
         assert 'track("sign_up", { method: "chatbot0" })' in js

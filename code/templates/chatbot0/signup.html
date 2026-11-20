@@ -1,6 +1,6 @@
 {% extends "chatbot0/base.html" %}
 {#- Sign-up, ported from zer0-frontend-web signUpPage.tsx. static/chatbot0/js/signup.js does the work:
-    POST /domains/, POST /prompt (when a description is given), PATCH /chat-info/contact, then the embed script.
+    POST /domains/ (with the contact details), POST /prompt (when a description is given), then the embed script.
     Inputs have no name attribute and the button starts disabled, so nothing is ever submitted without the script. -#}
 {% block head %}
   <script src="static/js/signup.js" defer></script>

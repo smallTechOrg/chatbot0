@@ -49,6 +49,13 @@ def client():
         yield c
 
 
+@pytest.fixture(autouse=True)
+def notify():
+    """Never post to Slack from a test. Yields the mock to check the call."""
+    with patch("api.domains.notify_signup") as fake:
+        yield fake
+
+
 @pytest.fixture
 def mock_service():
     """
@@ -95,6 +102,7 @@ class TestCreateDomain:
         mock_service.add_domain.assert_called_once_with(
             website_url="https://example.com",
             parent_id=1,
+            contact={"contact_name": None, "email": None, "mobile": None},
         )
 
     def test_extra_fields_are_ignored(self, client, mock_service):
@@ -108,6 +116,51 @@ class TestCreateDomain:
         _, kwargs = mock_service.add_domain.call_args
         assert "key" not in kwargs
         assert kwargs["parent_id"] == 1
+
+
+class TestCreateDomainContact:
+    """The chatbot0 sign-up sends who is signing up along with the website."""
+
+    def test_contact_reaches_the_service(self, client, mock_service):
+        response = client.post("/domains/", json={
+            "website_url": "acme.com", "contact_name": "  Anjali ", "email": "anjali@acme.com",
+        })
+        assert response.status_code == 201
+        _, kwargs = mock_service.add_domain.call_args
+        assert kwargs["contact"] == {"contact_name": "Anjali", "email": "anjali@acme.com", "mobile": None}
+
+    def test_blank_fields_are_not_given(self, client, mock_service):
+        response = client.post("/domains/", json={
+            "website_url": "acme.com", "contact_name": "", "email": "  ", "mobile": "+91 98765 43210",
+        })
+        assert response.status_code == 201
+        _, kwargs = mock_service.add_domain.call_args
+        assert kwargs["contact"] == {"contact_name": None, "email": None, "mobile": "+91 98765 43210"}
+
+    @pytest.mark.parametrize("field,value", [("email", "not-an-email"), ("mobile", "call me"),
+                                             ("contact_name", "x" * 201)])
+    def test_bad_contact_returns_422(self, client, mock_service, field, value):
+        response = client.post("/domains/", json={"website_url": "acme.com", field: value})
+        assert response.status_code == 422
+        mock_service.add_domain.assert_not_called()
+
+    def test_contact_is_never_returned(self, client, mock_service):
+        mock_service.add_domain.return_value = {**SAMPLE_DOMAIN, "email": "anjali@acme.com"}
+        mock_service.list_domains.return_value = [{**SAMPLE_DOMAIN, "email": "anjali@acme.com"}]
+        created = client.post("/domains/", json={"website_url": "acme.com", "email": "anjali@acme.com"})
+        listed = client.get("/domains/")
+        assert "anjali@acme.com" not in created.get_data(as_text=True)
+        assert "anjali@acme.com" not in listed.get_data(as_text=True)
+
+    def test_sign_up_is_posted_to_slack(self, client, mock_service, notify):
+        client.post("/domains/", json={"website_url": "acme.com", "contact_name": "Anjali", "mobile": "9876543210"})
+        notify.assert_called_once_with(
+            "example.com", {"contact_name": "Anjali", "email": None, "mobile": "9876543210"})
+
+    def test_failed_sign_up_is_not_posted(self, client, mock_service, notify):
+        mock_service.add_domain.side_effect = DomainAlreadyExistsError("exists")
+        assert client.post("/domains/", json={"website_url": "acme.com"}).status_code == 409
+        notify.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

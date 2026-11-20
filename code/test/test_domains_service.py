@@ -171,3 +171,17 @@ class TestAddDomainErrors:
         with pytest.raises(DomainAlreadyExistsError):
             service.add_domain("https://example.com")
         mock_repo.create.assert_not_called()
+
+
+class TestAddDomainContact:
+    def test_contact_is_stored_on_the_main_row_only(self, service, mock_repo):
+        contact = {"contact_name": "Anjali", "email": "anjali@example.com", "mobile": None}
+        service.add_domain("https://www.example.com", parent_id=None, contact=contact)
+        main, www = mock_repo.create.call_args_list
+        assert main.kwargs == {"key": "EXAMPLE_COM", "address": "example.com", "parent_id": None, **contact}
+        assert www.kwargs == {"key": "EXAMPLE_COM", "address": "www.example.com", "parent_id": None}
+
+    def test_no_contact_still_works(self, service, mock_repo):
+        service.add_domain("example.com")
+        main, _ = mock_repo.create.call_args_list
+        assert "email" not in main.kwargs
