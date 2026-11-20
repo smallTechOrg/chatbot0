@@ -22,7 +22,7 @@ register_host_routing) GET/HEAD on "/", the page paths above, "/robots.txt",
 "/sitemap.xml" and "/static/..." serve these pages; every other path and method,
 and every other host, is untouched, so the API and the Swagger UI behave exactly
 as before. That is how the sign-up page reaches the API: signup.js calls
-root-absolute paths (POST /domains/, POST /prompt, PATCH /chat-info/contact),
+root-absolute paths (POST /domains/, POST /prompt),
 which are API routes on this service whether the page was served at /chatbot0/
 or at the root of chatbot0.smalltech.in. Canonical, Open Graph and sitemap URLs always point at
 https://chatbot0.smalltech.in.
@@ -184,8 +184,8 @@ def register_host_routing(app: Flask) -> None:
     """Serve the chatbot0 pages at the root of the chatbot0 host(s).
 
     Only GET/HEAD on a handful of exact paths is intercepted, and only for those hosts; anything else falls
-    through to the normal routes (API, health, Swagger). The sign-up page relies on that: its POST /domains/,
-    POST /prompt and PATCH /chat-info/contact reach the API on this host unchanged."""
+    through to the normal routes (API, health, Swagger). The sign-up page relies on that: its POST /domains/
+    and POST /prompt reach the API on this host unchanged."""
     hosts = _chat_hosts()
     pages = {
         "/": landing, "/pricing": pricing, "/sales": sales, "/support": support, "/industries": industries,

@@ -26,6 +26,7 @@ from domains import (
     InvalidWebsiteURLError,
 )
 from domains.schemas import CreateDomainRequest, DomainResponse
+from slack_notify import notify_signup
 
 domains_bp = Blueprint(
     "domains",
@@ -72,16 +73,20 @@ def create_domain(body: dict):
     root (parent_id=1) automatically.
     """
     service = _get_domain_service()
+    contact = {name: body.get(name) for name in ("contact_name", "email", "mobile")}
     try:
         domain = service.add_domain(
             website_url=body["website_url"],
             parent_id=1,
+            contact=contact,
         )
-        return domain
     except DomainAlreadyExistsError as exc:
         abort(HTTPStatus.CONFLICT, message=str(exc))
     except InvalidWebsiteURLError as exc:
         abort(HTTPStatus.UNPROCESSABLE_ENTITY, message=str(exc))
+    # Tell the team. Never fails the sign-up: the domain is already saved.
+    notify_signup(domain["address"], contact)
+    return domain
 
 
 @domains_bp.get("/")

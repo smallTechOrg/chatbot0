@@ -170,6 +170,11 @@ def ensure_domains_table_exists(sync_connection):
         ON CONFLICT (address) DO NOTHING;
         """
         cur.execute(create_table_sql)
+        # Who signed the domain up, from the chatbot0 sign-up form. Only the
+        # main row carries them; the www row stays empty.
+        cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS contact_name TEXT;")
+        cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS email TEXT;")
+        cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS mobile TEXT;")
 
     print("Table 'domains' created/verified successfully.")
 

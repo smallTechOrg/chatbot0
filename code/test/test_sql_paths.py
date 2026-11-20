@@ -187,9 +187,19 @@ class TestDomainPaths:
         assert repo.find_by_address("example.com") is not None
         assert repo.find_by_id(1) is not None
 
-        created = repo.create(key="SQLPATHS", address=AUDIT_ADDRESS, parent_id=None)
+        created = repo.create(key="SQLPATHS", address=AUDIT_ADDRESS, parent_id=None,
+                              contact_name="Anjali", email="anjali@example.com", mobile=None)
         assert created["address"] == AUDIT_ADDRESS
         assert repo.find_by_address(AUDIT_ADDRESS)["key"] == "SQLPATHS"
+
+        def contact(conn):
+            with conn.cursor() as cur:
+                cur.execute("SELECT contact_name, email, mobile FROM domains WHERE address = %s;",
+                            (AUDIT_ADDRESS,))
+                return cur.fetchone()
+
+        from db_pool import run_with_retry
+        assert run_with_retry(contact) == ("Anjali", "anjali@example.com", None)
 
 
 # ---------------------------------------------------------------------------

@@ -106,11 +106,19 @@
       var customPrompt = promptEl.value.trim();
 
       try {
-        // 1. Register the domain
-        var domainRes = await jsonPost("/domains/", "POST", { website_url: website });
+        // 1. Register the domain, with who is signing up
+        var domainBody = { website_url: website, contact_name: name };
+        if (contactMethod === "email") domainBody.email = emailEl.value.trim();
+        else domainBody.mobile = phoneEl.value.trim();
+        var domainRes = await jsonPost("/domains/", "POST", domainBody);
+        if (domainRes.status === 409) {
+          throw new Error("This website is already signed up. Write to us at contact@smalltech.in and we'll help.");
+        }
+        if (domainRes.status === 422) {
+          throw new Error("Please check your website address, email or phone number.");
+        }
         if (!domainRes.ok) throw new Error("Failed to register domain. Please try again.");
         var domainData = await domainRes.json();
-        var sessionId = domainData.session_id || domainData.id || "";
 
         // 2. Save custom prompt (company description)
         if (customPrompt) {
@@ -123,15 +131,7 @@
           if (!promptRes.ok) console.warn("Prompt save failed, continuing...");
         }
 
-        // 3. Save contact info
-        if (sessionId) {
-          var contactBody = { session_id: sessionId, name: name };
-          if (contactMethod === "email") contactBody.email = emailEl.value.trim();
-          else contactBody.mobile = phoneEl.value.trim();
-          await jsonPost("/chat-info/contact", "PATCH", contactBody);
-        }
-
-        // 4. Build the embed script tag
+        // 3. Build the embed script tag
         embedScript = "<script\n  src=\"" + WIDGET_ORIGIN + "/embed.js\"\n  data-chat-url=\"" + WIDGET_ORIGIN +
           "/embed\"\n  data-colour=\"" + colour + "\"\n  data-tagline=\"Chat with us\"\n  defer\n></" + "script>";
         embedEl.textContent = embedScript;

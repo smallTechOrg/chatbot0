@@ -71,6 +71,9 @@ class DomainRepository:
         key: str,
         address: str,
         parent_id: Optional[int] = None,
+        contact_name: Optional[str] = None,
+        email: Optional[str] = None,
+        mobile: Optional[str] = None,
     ) -> dict:
         """
         Add a domain row and return it. Raise UniqueViolation if the address
@@ -84,10 +87,10 @@ class DomainRepository:
         def insert(conn):
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO domains (key, address, parent) "
-                    "VALUES (%s, %s, %s) "
+                    "INSERT INTO domains (key, address, parent, contact_name, email, mobile) "
+                    "VALUES (%s, %s, %s, %s, %s, %s) "
                     "RETURNING id, key, address, parent, created_at;",
-                    (key, address, parent_id),
+                    (key, address, parent_id, contact_name, email, mobile),
                 )
                 return cur.fetchone()
 

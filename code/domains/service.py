@@ -58,9 +58,12 @@ class DomainService:
         website_url: str,
         key: Optional[str] = None,
         parent_id: Optional[int] = None,
+        contact: Optional[dict] = None,
     ) -> dict:
         """
         Validate, extract and persist a new domain derived from *website_url*.
+        *contact* (contact_name, email, mobile) is who signed it up; it is
+        stored on the main row only.
 
         Parameters
         ----------
@@ -107,7 +110,9 @@ class DomainService:
             )
 
         resolved_key = self._resolve_key(key, address)
-        domain = self._repo.create(key=resolved_key, address=address, parent_id=parent_id)
+        domain = self._repo.create(
+            key=resolved_key, address=address, parent_id=parent_id, **(contact or {})
+        )
 
         # Register the www variant too, under the same key, so a lookup gives
         # the same key with or without the prefix.
