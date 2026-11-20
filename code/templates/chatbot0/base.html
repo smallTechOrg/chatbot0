@@ -1,4 +1,5 @@
 {#- chatbot0 public pages (SMA-8). Links and assets are relative on purpose: see chatbot0/__init__.py. -#}
+{%- set nav_pages = [("sales", "/sales", "Sales agent"), ("support", "/support", "Support agent"), ("industries", "/industries", "Industries"), ("pricing", "/pricing", "Pricing"), ("about", "/about", "About")] -%}
 {%- macro wordmark() -%}
 <span class="pub-wordmark">chatbot<span class="pub-wordmark__zero">0</span></span>
 {%- endmacro -%}
@@ -25,7 +26,7 @@
   <meta property="og:image" content="{{ site_url }}/static/img/og-chatbot0.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="chatbot0, the AI chat agent for small business websites, by smallTech">
+  <meta property="og:image:alt" content="chatbot0, the AI chat agent for business websites, by smallTech">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ page_title }}">
   <meta name="twitter:description" content="{{ page_description }}">
@@ -45,17 +46,18 @@
     <div class="pub-wrap pub-header__inner">
       <a class="pub-brand" href="./" aria-label="chatbot0 home">{{ wordmark() }}</a>
       <nav class="pub-nav" aria-label="Main">
-        <a href="./#how" class="pub-nav__link">How it works</a>
-        <a href="pricing" class="pub-nav__link"{% if page_path == "/pricing" %} aria-current="page"{% endif %}>Pricing</a>
-        <a href="./#zer0" class="pub-nav__link">Zer0</a>
+        {%- for href, path, label in nav_pages %}
+        <a href="{{ href }}" class="pub-nav__link"{% if page_path == path %} aria-current="page"{% endif %}>{{ label }}</a>
+        {%- endfor %}
       </nav>
       <a class="pub-btn pub-btn--primary pub-header__cta" href="{{ signup_url }}">Sign up free</a>
       <details class="pub-menu">
         <summary class="pub-menu__toggle" aria-label="Menu">Menu</summary>
         <div class="pub-menu__panel">
           <a href="./#how">How it works</a>
-          <a href="pricing">Pricing</a>
-          <a href="./#zer0">Zer0</a>
+          {%- for href, path, label in nav_pages %}
+          <a href="{{ href }}"{% if page_path == path %} aria-current="page"{% endif %}>{{ label }}</a>
+          {%- endfor %}
           <a href="mailto:{{ contact_email }}">Contact</a>
           <a class="pub-btn pub-btn--primary" href="{{ signup_url }}">Sign up free</a>
         </div>
@@ -78,6 +80,10 @@
       </div>
       <div class="pub-footer__meta">
         <nav class="pub-footer__nav" aria-label="Footer">
+          <a href="sales">sales agent</a>
+          <a href="support">support agent</a>
+          <a href="industries">industries</a>
+          <a href="about">about</a>
           <a href="{{ zer0_url }}">Zer0</a>
           <a href="mailto:{{ contact_email }}?subject=chatbot0">contact</a>
           <a href="{{ github_url }}" target="_blank" rel="noreferrer">github</a>
