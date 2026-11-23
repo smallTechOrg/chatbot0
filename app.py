@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from flask import Flask, render_template
@@ -10,8 +11,11 @@ from api.domains import domains_bp
 from chatbot0 import chatbot0_bp, register_host_routing
 from core import crypto
 from core.config import APP_ENV, CHATBOT0_SECRET_KEY, DEBUG, PORT, SCHEDULER_ENABLED, WERKZEUG_RUN_MAIN
+from core.logging import configure_logging
 from core.schema import init_db
 from summary.scheduler import start_scheduler, stop_scheduler
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Application factory
@@ -19,6 +23,7 @@ from summary.scheduler import start_scheduler, stop_scheduler
 
 
 def create_app() -> Flask:
+    configure_logging()
     flask_app = Flask(__name__)
 
     # -- Database ------------------------------------------------------------
@@ -76,7 +81,7 @@ def create_app() -> Flask:
     if SCHEDULER_ENABLED:
         start_scheduler()
     else:
-        print("[SCHEDULER] disabled (SCHEDULER_ENABLED=false); jobs run via /jobs/*")
+        logger.info("[SCHEDULER] disabled (SCHEDULER_ENABLED=false); jobs run via /jobs/*")
 
     return flask_app
 

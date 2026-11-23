@@ -1,4 +1,8 @@
+import logging
+
 from core.db_pool import with_connection
+
+logger = logging.getLogger(__name__)
 
 FORMATTING_INSTRUCTION = """
 
@@ -44,11 +48,11 @@ def load_prompt_from_db(domain: str, agent_type: str, prompt_type: str):
         row = find_prompt(domain, agent_type, prompt_type)
 
         if row is None:
-            print(f"Prompt not found in DB: {domain}/{agent_type}/{prompt_type}, looking for parent prompt")
+            logger.info(f"Prompt not found in DB: {domain}/{agent_type}/{prompt_type}, looking for parent prompt")
             parent_domain = find_parent_key(domain)
             row = find_prompt(parent_domain, agent_type, prompt_type)
             if row is None:
-                print(f"Prompt not found in DB for parent Domain: {domain}/{agent_type}/{prompt_type}")
+                logger.info(f"Prompt not found in DB for parent Domain: {domain}/{agent_type}/{prompt_type}")
                 return None
 
         return row[0]

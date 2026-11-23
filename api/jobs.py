@@ -13,8 +13,8 @@ job is created with --oidc-service-account-email.
 """
 
 import contextlib
+import logging
 import threading
-import traceback
 from collections.abc import Iterator
 
 import psycopg
@@ -24,6 +24,8 @@ from google.oauth2 import id_token
 
 from core import config
 from summary.periodic import periodic_summary
+
+logger = logging.getLogger(__name__)
 
 jobs_bp = Blueprint("jobs", __name__, url_prefix="/jobs")
 
@@ -113,22 +115,21 @@ def run_periodic_summary():
     try:
         caller = verify_invoker(request.headers.get("Authorization", ""))
     except PermissionError as exc:
-        print(f"[JOBS] periodic summary refused: {exc}")
+        logger.info(f"[JOBS] periodic summary refused: {exc}")
         return jsonify({"error": "unauthorized"}), 401
 
-    print(f"[JOBS] periodic summary requested by {caller}")
+    logger.info(f"[JOBS] periodic summary requested by {caller}")
     try:
         with single_run_lock():
             result = periodic_summary()
     except JobAlreadyRunning:
-        print("[JOBS] periodic summary already running; skipped")
+        logger.info("[JOBS] periodic summary already running; skipped")
         return jsonify({"status": "skipped", "reason": "already running"}), 409
     except psycopg.OperationalError as exc:
-        print(f"[JOBS] periodic summary could not reach the database: {exc}")
+        logger.error(f"[JOBS] periodic summary could not reach the database: {exc}")
         return jsonify({"status": "failed", "error": "database unavailable"}), 503
     except Exception as exc:
-        print(f"[JOBS] periodic summary failed: {exc}")
-        print(traceback.format_exc())
+        logger.exception(f"[JOBS] periodic summary failed: {exc}")
         return jsonify({"status": "failed", "error": str(exc)}), 500
 
     # Counts only: the sessions themselves hold visitor details.
@@ -144,5 +145,5 @@ def run_periodic_summary():
         )
     }
     counts["slack_sent"] = (result.get("slack") or {}).get("sent", 0)
-    print(f"[JOBS] periodic summary finished: {counts}")
+    logger.info(f"[JOBS] periodic summary finished: {counts}")
     return jsonify({"status": "ok", **counts}), 200

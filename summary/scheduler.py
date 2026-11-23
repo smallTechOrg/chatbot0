@@ -4,14 +4,16 @@ on config.PERIODIC_SUMMARY_CRON in config.PERIODIC_SUMMARY_TIMEZONE.
 """
 
 import atexit
+import logging
 import threading
-import traceback
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from core import config
 from summary.periodic import periodic_summary
+
+logger = logging.getLogger(__name__)
 
 JOB_ID = "periodic_summary"
 
@@ -48,7 +50,7 @@ def start_scheduler() -> BackgroundScheduler:
         _scheduler = scheduler
 
     job = scheduler.get_job(JOB_ID)
-    print(
+    logger.info(
         f"[SCHEDULER] Periodic summary job scheduled on '{config.PERIODIC_SUMMARY_CRON}' "
         f"({config.PERIODIC_SUMMARY_TIMEZONE}); next run at {job.next_run_time}"
     )
@@ -60,18 +62,17 @@ def run_periodic_summary_job() -> None:
     The scheduled job. Catches everything: an exception inside a job is only
     logged by APScheduler, and the next run must still happen.
     """
-    print("[SCHEDULER] periodic summary job started")
+    logger.info("[SCHEDULER] periodic summary job started")
     try:
         result = periodic_summary()
-        print(
+        logger.info(
             f"[SCHEDULER] periodic summary job finished: "
             f"{result['summarised_count']}/{result['session_count']} session(s) summarised, "
             f"{result.get('resent_count', 0)} resent, "
             f"slack={result.get('slack')}"
         )
     except Exception as exc:
-        print(f"[SCHEDULER] periodic summary job failed: {exc}")
-        print(traceback.format_exc())
+        logger.exception(f"[SCHEDULER] periodic summary job failed: {exc}")
 
 
 def stop_scheduler() -> None:
@@ -81,7 +82,7 @@ def stop_scheduler() -> None:
         scheduler, _scheduler = _scheduler, None
     if scheduler is not None and scheduler.running:
         scheduler.shutdown(wait=False)
-        print("[SCHEDULER] stopped")
+        logger.info("[SCHEDULER] stopped")
 
 
 def get_scheduler() -> BackgroundScheduler | None:

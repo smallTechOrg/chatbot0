@@ -1,10 +1,12 @@
-import traceback
+import logging
 from http import HTTPStatus
 
 from flask import Blueprint, jsonify, request
 
 from api.models import APIResponse
 from chat.prompt_store import get_all_prompts, upsert_prompt
+
+logger = logging.getLogger(__name__)
 
 prompt_bp = Blueprint("prompts", __name__)
 
@@ -15,7 +17,7 @@ def get_prompts():
     try:
         return jsonify({"prompts": get_all_prompts()}), 200
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
@@ -35,5 +37,5 @@ def create_or_update_prompt():
         else:
             return jsonify({"success": False, "error": "Failed to create/update prompt."}), 500
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)

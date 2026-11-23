@@ -1,4 +1,4 @@
-import traceback
+import logging
 from http import HTTPStatus
 
 from flask import Blueprint, jsonify, request
@@ -9,6 +9,8 @@ from api.validators import chat_api_validate, validate_contact_data, validate_hi
 from chat.engine import get_groq_response
 from chat.history import get_history
 from leads.repository import get_all_chat_info, update_chat_info, update_contact_info
+
+logger = logging.getLogger(__name__)
 
 chat_bp = Blueprint("chat", __name__)
 
@@ -36,8 +38,7 @@ def chat_api():
         # A bad request already has the correct status code. Do not change it.
         raise
     except Exception as e:
-        print(f"Error during LLM call: {e}")
-        print(traceback.format_exc())
+        logger.exception(f"Error during LLM call: {e}")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
@@ -57,7 +58,7 @@ def patch_updates():
     except HTTPException:
         raise
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
@@ -78,7 +79,7 @@ def patch_contact_info():
     except HTTPException:
         raise
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
@@ -88,8 +89,7 @@ def get_chat_info():
         leads_data, _status = get_all_chat_info()
         return APIResponse(None, {"leads": leads_data}).response(HTTPStatus.OK)
     except Exception as e:
-        print(f"Error in get_leads endpoint: {e}")
-        print(traceback.format_exc())
+        logger.exception(f"Error in get_leads endpoint: {e}")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
@@ -107,6 +107,5 @@ def history_endpoint():
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in history endpoint: {e}")
-        print(traceback.format_exc())
+        logger.exception(f"Error in history endpoint: {e}")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)

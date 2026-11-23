@@ -10,7 +10,7 @@ are pull-only: the customer writes first, so free-form replies are allowed
 
 from __future__ import annotations
 
-import traceback
+import logging
 import uuid
 from collections.abc import Iterator
 
@@ -20,6 +20,8 @@ from summary.slack import notify_whatsapp_problem
 from whatsapp import repository
 from whatsapp.client import GraphResult, send_text
 from whatsapp.formatting import split_message, to_whatsapp
+
+logger = logging.getLogger(__name__)
 
 # WhatsApp chats use the sales agent: the lead details it captures are the point.
 REQUEST_TYPE = agent_type.SALES.value
@@ -117,22 +119,21 @@ def handle_payload(connection: dict, payload: dict) -> None:
             if event["phone_number_id"] != connection["phone_number_id"]:
                 conn = repository.get_connection_by_number(event["phone_number_id"])
                 if not conn or conn["app_secret"] != connection["app_secret"]:
-                    print(f"[WHATSAPP] event for unconnected number {event['phone_number_id']}; ignoring")
+                    logger.info(f"[WHATSAPP] event for unconnected number {event['phone_number_id']}; ignoring")
                     continue
             if event["kind"] == "failed_status":
                 _record_failure(conn, event["error"], token_problem=False)
                 continue
             repository.mark_inbound(conn["id"])
             if not repository.claim_message(event["message_id"]):
-                print(f"[WHATSAPP] message {event['message_id']} already handled; ignoring the redelivery")
+                logger.info(f"[WHATSAPP] message {event['message_id']} already handled; ignoring the redelivery")
                 continue
             if event["kind"] == "media":
                 _send(conn, event["wa_id"], [TEXT_ONLY_REPLY])
             else:
                 handle_text(conn, event["wa_id"], event["name"], event["text"])
         except Exception:
-            print(f"[WHATSAPP] failed handling {event['kind']} event")
-            print(traceback.format_exc())
+            logger.exception(f"[WHATSAPP] failed handling {event['kind']} event")
 
 
 def handle_text(conn: dict, wa_id: str, name: str | None, text: str) -> None:
@@ -143,7 +144,7 @@ def handle_text(conn: dict, wa_id: str, name: str | None, text: str) -> None:
         reply = get_groq_response(text, session_id, REQUEST_TYPE, domain)
         bodies = split_message(to_whatsapp(reply)) or [FALLBACK_REPLY]
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         bodies = [FALLBACK_REPLY]
     _send(conn, wa_id, bodies)
 
@@ -167,7 +168,7 @@ def _record_failure(conn: dict, error: str, token_problem: bool) -> None:
     connection 'needs attention'; Slack hears about it once, when it is first flagged, not
     on every failed message after.
     """
-    print(f"[WHATSAPP] connection {conn['id']}: {error}")
+    logger.error(f"[WHATSAPP] connection {conn['id']}: {error}")
     newly_flagged = repository.mark_error(conn["id"], error, needs_attention=token_problem)
     if newly_flagged:
         notify_whatsapp_problem(conn, error)

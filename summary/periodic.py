@@ -4,7 +4,7 @@ each with the LLM, save it on chat_info (summary, summary_generated_at,
 summary_notified_at), and post to Slack, resending until Slack has it.
 """
 
-import traceback
+import logging
 from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -18,6 +18,8 @@ from core.db_pool import with_connection
 from core.llm import get_chat_model
 from core.paths import PROMPTS_DIR
 from summary.slack import send_summaries_to_slack
+
+logger = logging.getLogger(__name__)
 
 # How far back find_chats_needing_summary() looks (SUMMARY_WINDOW_DAYS in .env).
 SUMMARY_WINDOW = timedelta(days=config.SUMMARY_WINDOW_DAYS)
@@ -44,14 +46,14 @@ def periodic_summary() -> dict[str, Any]:
     run_at = datetime.now(ZoneInfo(config.PERIODIC_SUMMARY_TIMEZONE))
 
     sessions = find_chats_needing_summary()
-    print(f"[PERIODIC_SUMMARY] {len(sessions)} session(s) waiting for a summary")
+    logger.info(f"[PERIODIC_SUMMARY] {len(sessions)} session(s) waiting for a summary")
 
     # One database call at a time, so pooled connections are never nested.
     for session in sessions:
         session_id = session["session_id"]
         try:
             session["conversation"] = fetch_full_conversation_history(session_id)
-            print(
+            logger.info(
                 f"[PERIODIC_SUMMARY] session {session_id}: "
                 f"{len(session['conversation'])} message(s) in full conversation"
             )
@@ -68,8 +70,7 @@ def periodic_summary() -> dict[str, Any]:
             save_summary(session_id, summary)
             session["summary"] = summary
         except Exception as exc:
-            print(f"[PERIODIC_SUMMARY] session {session_id} failed: {exc}")
-            print(traceback.format_exc())
+            logger.exception(f"[PERIODIC_SUMMARY] session {session_id} failed: {exc}")
             session["error"] = str(exc)
 
     # Pass two: summaries saved earlier that never reached Slack. A session
@@ -95,9 +96,8 @@ def periodic_summary() -> dict[str, Any]:
                 entry["silent"] = True
             resent.append(entry)
     except Exception as exc:
-        print(f"[PERIODIC_SUMMARY] could not look up unsent summaries: {exc}")
-        print(traceback.format_exc())
-    print(f"[PERIODIC_SUMMARY] {len(resent)} saved summary(ies) waiting to be resent")
+        logger.exception(f"[PERIODIC_SUMMARY] could not look up unsent summaries: {exc}")
+    logger.info(f"[PERIODIC_SUMMARY] {len(resent)} saved summary(ies) waiting to be resent")
 
     all_sessions = sessions + resent
     result = {
@@ -113,8 +113,7 @@ def periodic_summary() -> dict[str, Any]:
     try:
         result["slack"] = send_summaries_to_slack(result)
     except Exception as exc:
-        print(f"[PERIODIC_SUMMARY] Slack delivery failed: {exc}")
-        print(traceback.format_exc())
+        logger.exception(f"[PERIODIC_SUMMARY] Slack delivery failed: {exc}")
         result["slack"] = {"sent": 0, "error": str(exc)}
 
     # Silent sessions are always stamped; others only once Slack accepted them.
@@ -127,8 +126,7 @@ def periodic_summary() -> dict[str, Any]:
         try:
             result["notified_count"] = mark_summaries_notified(to_stamp)
         except Exception as exc:
-            print(f"[PERIODIC_SUMMARY] could not mark sessions as notified: {exc}")
-            print(traceback.format_exc())
+            logger.exception(f"[PERIODIC_SUMMARY] could not mark sessions as notified: {exc}")
 
     return result
 
@@ -259,7 +257,7 @@ def save_summary(conn, session_id: str, summary: str) -> None:
             """,
             (summary, session_id),
         )
-    print(f"[PERIODIC_SUMMARY] summary saved for session {session_id}")
+    logger.info(f"[PERIODIC_SUMMARY] summary saved for session {session_id}")
 
 
 @with_connection
@@ -281,7 +279,7 @@ def mark_summaries_notified(conn, session_ids: list[str]) -> int:
             (list(session_ids),),
         )
         updated = cur.rowcount
-    print(f"[PERIODIC_SUMMARY] {updated} session(s) marked as notified")
+    logger.info(f"[PERIODIC_SUMMARY] {updated} session(s) marked as notified")
     return updated
 
 
@@ -315,4 +313,4 @@ def find_unnotified_summaries(conn) -> list[dict[str, Any]]:
 if __name__ == "__main__":
     import json
 
-    print(json.dumps(periodic_summary(), indent=2, default=str))
+    logger.info(json.dumps(periodic_summary(), indent=2, default=str))

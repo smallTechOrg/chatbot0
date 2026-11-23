@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 
 from langchain_core.messages import SystemMessage
@@ -9,6 +10,8 @@ from core.config import agent_type
 from core.db_pool import with_connection
 from core.llm import get_chat_model
 
+logger = logging.getLogger(__name__)
+
 
 def process_conversation(user_input, session_id, request_type, domain):
     """
@@ -17,7 +20,7 @@ def process_conversation(user_input, session_id, request_type, domain):
     """
 
     try:
-        print(f"[PROCESSOR] Processing session {session_id} for contact info detection...")
+        logger.info(f"[PROCESSOR] Processing session {session_id} for contact info detection...")
         # Update request_type for the new messages in this session
         _update_session_request_type(session_id, request_type, domain)
         # Choose llm function based on request type
@@ -29,16 +32,16 @@ def process_conversation(user_input, session_id, request_type, domain):
             info_data = sanitise_contact_info(info_data)
 
         if info_data and _has_valid_info(info_data, request_type):
-            print(f"[PROCESSOR] info detected in session {session_id}")
+            logger.info(f"[PROCESSOR] info detected in session {session_id}")
 
             # Save information to database
             _save_info_to_database(session_id, info_data, user_input, request_type, domain)
-            print(f"[PROCESSOR] information saved for session {session_id}.")
+            logger.info(f"[PROCESSOR] information saved for session {session_id}.")
         else:
-            print(f"[PROCESSOR] No Info detected in current message for session {session_id}")
+            logger.info(f"[PROCESSOR] No Info detected in current message for session {session_id}")
 
     except Exception as e:
-        print(f"[PROCESSOR] Error in conversation processor: {e}")
+        logger.error(f"[PROCESSOR] Error in conversation processor: {e}")
         # Don't let processing errors break the chat flow
 
 
@@ -63,15 +66,15 @@ def _update_session_request_type(conn, session_id, request_type, domain):
             cur.execute(insert_query, (session_id, request_type, domain))
 
             if cur.rowcount and cur.rowcount > 0:
-                print(
+                logger.info(
                     f"[CREATE] Inserted new chat_info for session_id={session_id} "
                     f"with request_type='{request_type}' and domain='{domain}'"
                 )
             else:
-                print(f"[CREATE] session_id={session_id} already exists - no action taken")
+                logger.info(f"[CREATE] session_id={session_id} already exists - no action taken")
 
     except Exception as e:
-        print(f"Error inserting request_type row: {e}")
+        logger.error(f"Error inserting request_type row: {e}")
         raise
 
 
@@ -117,7 +120,7 @@ def _detect_info_with_llm(message, request_type, domain):
         else:
             prompt_content = get_prompt(domain, request_type, "fetch-name")
             prompt_content = prompt_content.replace("{message}", message)
-        print(f"[INFO_DETECTION] Using prompt: {prompt_content}")
+        logger.debug("[INFO_DETECTION] prompt is %d characters", len(prompt_content))
         # Create the prompt
         full_prompt = [SystemMessage(content=prompt_content)]
 
@@ -126,18 +129,18 @@ def _detect_info_with_llm(message, request_type, domain):
         response_text = response.content.strip()
         # Clean markdown fences if present
         response_text = response_text.strip("`").replace("json\n", "")
-        print(f"[INFO_DETECTION] LLM Response: {response_text}")
+        logger.debug("[INFO_DETECTION] LLM response: %s", response_text)
 
         # Parse JSON response
         try:
             contact_info = json.loads(response_text)
             return contact_info
         except json.JSONDecodeError:
-            print(f"[INFO_DETECTION] Failed to parse LLM response as JSON: {response_text}")
+            logger.error("[INFO_DETECTION] LLM response was not valid JSON (%d characters)", len(response_text))
             return {"contact_name": "", "email": "", "mobile": "", "country": ""}
 
     except Exception as e:
-        print(f"[INFO_DETECTION] Error in LLM contact info detection: {e}")
+        logger.error(f"[INFO_DETECTION] Error in LLM contact info detection: {e}")
         return {"contact_name": "", "email": "", "mobile": "", "country": ""}
 
 
@@ -221,15 +224,8 @@ def _save_info_to_database(conn, session_id, info_data, original_message, reques
             ),
         )
 
-        # Log what was updated
-        updates = []
-        if contact_name:
-            updates.append(f"contact_name='{contact_name}'")
-        if email:
-            updates.append(f"email='{email}'")
-        if country:
-            updates.append(f"country='{country}'")
-        if mobile:
-            updates.append(f"mobile='{mobile}'")
-
-        print(f"[DATABASE] Info updated for session {session_id}: {', '.join(updates) if updates else 'no new info'}")
+        # Which fields changed is routine; their values are personal data, so those are DEBUG only.
+        saved = {"contact_name": contact_name, "email": email, "country": country, "mobile": mobile}
+        fields = ", ".join(name for name, value in saved.items() if value) or "no new info"
+        logger.info("[DATABASE] Info updated for session %s: %s", session_id, fields)
+        logger.debug("[DATABASE] Values saved for session %s: %s", session_id, {k: v for k, v in saved.items() if v})

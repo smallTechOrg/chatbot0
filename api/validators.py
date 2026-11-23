@@ -1,3 +1,4 @@
+import logging
 import uuid
 from http import HTTPStatus
 from urllib.parse import urlparse
@@ -5,6 +6,8 @@ from urllib.parse import urlparse
 from api.models import ValidationResponse
 from core.config import agent_type, max_input_length, status_type
 from core.db_pool import with_connection
+
+logger = logging.getLogger(__name__)
 
 
 def chat_api_validate(request) -> ValidationResponse:
@@ -93,7 +96,7 @@ def validate_session_id(request):
         return ValidationResponse(True)
 
     except Exception as e:
-        print(f"[Error] {e}")
+        logger.error(f"[Error] {e}")
         return {"is_valid": False, "message": "Internal Server Error", "status": HTTPStatus.INTERNAL_SERVER_ERROR}
 
 

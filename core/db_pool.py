@@ -9,6 +9,7 @@ from __future__ import annotations
 import atexit
 import contextlib
 import functools
+import logging
 import signal
 import threading
 import time
@@ -21,6 +22,8 @@ import psycopg
 from psycopg_pool import ConnectionPool
 
 from core import config
+
+logger = logging.getLogger(__name__)
 
 # Settings come from core/config.py. This module does not read the environment.
 
@@ -56,7 +59,7 @@ _pool_lock = threading.Lock()
 
 def _on_reconnect_failed(pool: ConnectionPool) -> None:
     """Report a long outage. Do not fail without a message."""
-    print(
+    logger.error(
         f"Pool {pool.name!r} could not reconnect within {config.DB_RECONNECT_TIMEOUT}s. "
         "The app stays up and keeps retrying; /health reports the database as "
         "down until it succeeds."
@@ -98,7 +101,7 @@ def _build_pool() -> ConnectionPool:
     # wait=False: the app must start when the database is down. /health then
     # reports the fault.
     pool.open(wait=False)
-    print(
+    logger.info(
         f"Database pool opened (min={config.DB_POOL_MIN_SIZE} max={config.DB_POOL_MAX_SIZE} "
         f"timeout={config.DB_POOL_TIMEOUT}s)"
     )
@@ -128,7 +131,7 @@ def close_pool() -> None:
     pool = _take_pool()
     if pool is not None:
         pool.close()
-        print("Database pool closed")
+        logger.info("Database pool closed")
 
 
 def _close_pool_at_exit() -> None:
@@ -171,14 +174,14 @@ def _track_borrow_depth() -> Iterator[None]:
     _borrow_depth.value = depth
     max_borrow_depth_seen = max(max_borrow_depth_seen, depth)
     if depth > 1:
-        print(
-            f"Nested database connection (depth {depth}) in thread "
-            f"{threading.current_thread().name!r}. With "
-            f"max_size={config.DB_POOL_MAX_SIZE} this risks deadlocking under "
-            "concurrency: finish the outer query and release before borrowing "
-            "again."
+        logger.warning(
+            "Nested database connection (depth %d) in thread %r. With max_size=%d this risks deadlocking under "
+            "concurrency: finish the outer query and release before borrowing again.\n%s",
+            depth,
+            threading.current_thread().name,
+            config.DB_POOL_MAX_SIZE,
+            "".join(traceback.format_stack()),
         )
-        print("".join(traceback.format_stack()))
     try:
         yield
     finally:
@@ -209,7 +212,7 @@ def _getconn_with_retry(
             last_error = exc
             if attempt == attempts:
                 break
-            print(f"Database unreachable (attempt {attempt}/{attempts}): {exc} -- retrying in {delay:.1f}s")
+            logger.warning(f"Database unreachable (attempt {attempt}/{attempts}): {exc} -- retrying in {delay:.1f}s")
             time.sleep(delay)
             delay = min(delay * 2, config.DB_RETRY_MAX_DELAY)
 
@@ -277,7 +280,7 @@ def run_with_retry[T](
             last_error = exc
             if attempt == attempts:
                 break
-            print(
+            logger.error(
                 f"{what} failed on a lost connection (attempt {attempt}/{attempts}): {exc} -- retrying in {delay:.1f}s"
             )
             time.sleep(delay)

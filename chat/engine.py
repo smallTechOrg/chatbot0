@@ -6,6 +6,7 @@ the same time and the request waits for both. They stay inside the request on pu
 instance CPU only while a request is open, so work left running after the response could freeze mid-way.
 """
 
+import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -15,6 +16,8 @@ from chat.history import get_session_history
 from chat.lead_capture import process_conversation
 from chat.prompts import get_prompt
 from core.llm import get_chat_model
+
+logger = logging.getLogger(__name__)
 
 _PROMPT = ChatPromptTemplate.from_messages(
     [("system", "{system}"), MessagesPlaceholder(variable_name="history"), ("human", "{input}")]
@@ -49,6 +52,6 @@ def _generate_reply(input_text: str, session_id: str, request_type: str, domain:
 def _capture_lead(input_text: str, session_id: str, request_type: str, domain: str) -> None:
     try:
         process_conversation(input_text, session_id, request_type, domain)
-        print("[LLM_API] Lead capture completed")
+        logger.info("[LLM_API] Lead capture completed")
     except Exception as exc:
-        print(f"[LLM_API] Warning: lead capture failed: {exc}")
+        logger.warning(f"[LLM_API] Warning: lead capture failed: {exc}")

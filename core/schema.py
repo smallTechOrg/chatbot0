@@ -3,9 +3,9 @@ Database bootstrap: make the database and its tables if they do not exist.
 Connections come from the pool in db_pool.
 """
 
+import logging
 import threading
 import time
-import traceback
 
 import psycopg
 from langchain_postgres import PostgresChatMessageHistory
@@ -13,6 +13,8 @@ from langchain_postgres import PostgresChatMessageHistory
 from chat.prompt_store import check_and_insert_default_prompts
 from core import config
 from core.db_pool import RETRYABLE_ERRORS, run_with_retry
+
+logger = logging.getLogger(__name__)
 
 _bootstrap_lock = threading.Lock()
 _bootstrap_thread = None
@@ -34,9 +36,9 @@ def ensure_database_exists(database_url=config.DATABASE_URL, database=config.db_
             cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (database,))
             if not cur.fetchone():
                 cur.execute(f'CREATE DATABASE "{database}"')
-                print(f"Database '{database}' created successfully.")
+                logger.info(f"Database '{database}' created successfully.")
             else:
-                print(f"Database '{database}' already exists.")
+                logger.info(f"Database '{database}' already exists.")
 
 
 def ensure_chat_table_exists(sync_connection, table):
@@ -44,7 +46,7 @@ def ensure_chat_table_exists(sync_connection, table):
     Use LangChain's helper to make sure the chat history table exists.
     """
     PostgresChatMessageHistory.create_tables(sync_connection, table)
-    print(f"Table '{table}' created or verified.")
+    logger.info(f"Table '{table}' created or verified.")
 
 
 def ensure_summaries_table_exists(sync_connection):
@@ -116,7 +118,7 @@ def ensure_summaries_table_exists(sync_connection):
         cur.execute("ALTER TABLE chat_info ADD COLUMN IF NOT EXISTS summary_generated_at TIMESTAMPTZ;")
         cur.execute("ALTER TABLE chat_info ADD COLUMN IF NOT EXISTS summary_notified_at TIMESTAMPTZ;")
 
-    print("Table 'chat_info' created/verified successfully.")
+    logger.info("Table 'chat_info' created/verified successfully.")
 
 
 def ensure_prompts_table_exists(sync_connection):
@@ -151,7 +153,7 @@ def ensure_prompts_table_exists(sync_connection):
         """
         cur.execute(alter_table_sql)
 
-    print("Table 'prompts' created/verified successfully.")
+    logger.info("Table 'prompts' created/verified successfully.")
 
 
 def ensure_domains_table_exists(sync_connection):
@@ -178,7 +180,7 @@ def ensure_domains_table_exists(sync_connection):
         cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS email TEXT;")
         cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS mobile TEXT;")
 
-    print("Table 'domains' created/verified successfully.")
+    logger.info("Table 'domains' created/verified successfully.")
 
 
 def ensure_whatsapp_tables_exist(sync_connection):
@@ -218,7 +220,7 @@ def ensure_whatsapp_tables_exist(sync_connection):
             ON whatsapp_messages(received_at);
             """
         )
-    print("Tables 'whatsapp_connections' and 'whatsapp_messages' created/verified successfully.")
+    logger.info("Tables 'whatsapp_connections' and 'whatsapp_messages' created/verified successfully.")
 
 
 def _create_schema(sync_connection):
@@ -248,7 +250,7 @@ def _bootstrap_once():
     except Exception as exc:
         # A managed database usually denies the 'postgres' database. This is
         # not a fault: the schema step below still works.
-        print(f"Skipping the database-creation check: {exc}")
+        logger.warning(f"Skipping the database-creation check: {exc}")
 
     run_with_retry(_create_schema, attempts=1, label="schema bootstrap")
 
@@ -259,19 +261,18 @@ def _bootstrap_loop(limit=config.DB_BOOTSTRAP_ATTEMPTS):
     for attempt in range(1, limit + 1):
         try:
             _bootstrap_once()
-            print(f"Database schema ready (attempt {attempt}).")
+            logger.info(f"Database schema ready (attempt {attempt}).")
             return
         except RETRYABLE_ERRORS as exc:
-            print(f"Schema bootstrap attempt {attempt}/{limit} failed: {exc}")
+            logger.error(f"Schema bootstrap attempt {attempt}/{limit} failed: {exc}")
         except Exception:
             # Continue to retry. Some faults are temporary but are not
             # connection errors.
-            print(f"Schema bootstrap attempt {attempt}/{limit} failed unexpectedly")
-            print(traceback.format_exc())
+            logger.exception(f"Schema bootstrap attempt {attempt}/{limit} failed unexpectedly")
         time.sleep(delay)
         delay = min(delay * 2, config.DB_RETRY_MAX_DELAY)
 
-    print(f"Giving up on schema bootstrap after {limit} attempts. The app stays up.")
+    logger.warning(f"Giving up on schema bootstrap after {limit} attempts. The app stays up.")
 
 
 def init_db(wait=config.DB_STARTUP_WAIT):

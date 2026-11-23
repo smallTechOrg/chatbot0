@@ -1,9 +1,12 @@
 import json
+import logging
 from pathlib import Path
 
 from core.config import DEFAULT_DOMAIN
 from core.db_pool import with_connection
 from core.paths import PROMPTS_DIR
+
+logger = logging.getLogger(__name__)
 
 
 def load_json(path: Path):
@@ -21,7 +24,7 @@ def load_json(path: Path):
             # Not JSON — return plain text as-is
             return content.strip()
     except Exception as e:
-        print(f"Failed to load file {path}: {e}")
+        logger.error(f"Failed to load file {path}: {e}")
         return None
 
 
@@ -37,10 +40,10 @@ def check_and_insert_default_prompts(sync_connection):
         cur.execute("SELECT COUNT(*) FROM prompts;")
         count = cur.fetchone()[0]
         if count != 0:
-            print("Prompts table already contains data. No insertion needed.")
+            logger.info("Prompts table already contains data. No insertion needed.")
             return
 
-        print("Prompts table is empty. Inserting default prompts...")
+        logger.info("Prompts table is empty. Inserting default prompts...")
 
         default_prompts = [
             (DEFAULT_DOMAIN, "generic", "fetch-name", PROMPTS_DIR / "name_prompt.txt"),
@@ -56,7 +59,7 @@ def check_and_insert_default_prompts(sync_connection):
             if isinstance(text, Path):
                 text_json = load_json(text)
                 if text_json is None:
-                    print(f"Skipping insertion for {text}")
+                    logger.warning(f"Skipping insertion for {text}")
                     continue
                 text_to_insert = text_json
             else:
@@ -73,7 +76,7 @@ def check_and_insert_default_prompts(sync_connection):
                 (domain, agent_type, prompt_type, text_to_insert),
             )
 
-        print("Default prompts inserted successfully.")
+        logger.info("Default prompts inserted successfully.")
 
 
 def check_and_insert_default_domains(sync_connection):

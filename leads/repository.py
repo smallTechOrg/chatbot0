@@ -1,3 +1,4 @@
+import logging
 from http import HTTPStatus
 from typing import Any
 
@@ -6,6 +7,8 @@ from psycopg.rows import dict_row
 
 from core import config
 from core.db_pool import with_connection
+
+logger = logging.getLogger(__name__)
 
 
 @with_connection
@@ -47,8 +50,8 @@ def get_all_chat_info() -> tuple[list[dict[str, Any]], HTTPStatus]:
     try:
         return _select_chat_info(), HTTPStatus.OK
 
-    except Exception as e:
-        print("Error fetching chat-info:", e)
+    except Exception:
+        logger.exception("Error fetching chat-info")
         raise
 
 
@@ -80,22 +83,13 @@ def update_contact_info(
             cur.execute(update_query, (name, email, mobile, country, session_id))
             updated_row = cur.fetchone()
 
-            updates = []
-            if name:
-                updates.append(f"name='{name}'")
-            if email:
-                updates.append(f"email='{email}'")
-            if mobile:
-                updates.append(f"mobile='{mobile}'")
-            if country:
-                updates.append(f"country='{country}'")
-
-            changed = ", ".join(updates) if updates else "no new info"
-            print(f"[DATABASE] Contact updated for session {session_id}: {changed}")
+            given = {"name": name, "email": email, "mobile": mobile, "country": country}
+            changed = ", ".join(field for field, value in given.items() if value) or "no new info"
+            logger.info("[DATABASE] Contact updated for session %s: %s", session_id, changed)
             return bool(updated_row)
 
     except Exception as e:
-        print(f"[DATABASE ERROR] Failed to update contact for {session_id}: {e!s}")
+        logger.error(f"[DATABASE ERROR] Failed to update contact for {session_id}: {e!s}")
         raise
 
 
@@ -127,19 +121,11 @@ def update_chat_info(
             updated_row = cur.fetchone()
 
             # Log what was updated
-            updates = []
-            if status:
-                updates.append(f"status='{status}'")
-            if remarks:
-                updates.append(f"remarks='{remarks}'")
-            if is_active is not None:
-                updates.append(f"is_active={1 if is_active else 0}")
-
-            print(
-                f"[DATABASE] Info updated for session {session_id}: {', '.join(updates) if updates else 'no new info'}"
-            )
+            given = {"status": status, "remarks": remarks, "is_active": is_active}
+            changed = ", ".join(field for field, value in given.items() if value is not None) or "no new info"
+            logger.info("[DATABASE] Info updated for session %s: %s", session_id, changed)
             return bool(updated_row)
 
     except Exception as e:
-        print(f"[DATABASE ERROR] Failed to update lead for {session_id}: {e!s}")
+        logger.error(f"[DATABASE ERROR] Failed to update lead for {session_id}: {e!s}")
         raise

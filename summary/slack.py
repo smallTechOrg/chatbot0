@@ -4,6 +4,7 @@ One line per conversation ("7th Oct, 4:13 pm - SMALLTECH - Anjali - summary"); L
 become one sentence at the end, and silent sessions are left out.
 """
 
+import logging
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -11,6 +12,8 @@ from zoneinfo import ZoneInfo
 import requests
 
 from core import config
+
+logger = logging.getLogger(__name__)
 
 # Slack accepts about 40,000 characters in ``text``. Stay well under it and
 # split a long run into several messages.
@@ -34,21 +37,21 @@ def send_summaries_to_slack(result: dict[str, Any]) -> dict[str, Any]:
     webhook. Raises if a post fails, so the caller can record it.
     """
     if not result.get("sessions"):
-        print("[SLACK] No sessions waiting for a summary. Skipping Slack delivery.")
+        logger.warning("[SLACK] No sessions waiting for a summary. Skipping Slack delivery.")
         return {"sent": 0, "skipped": "no sessions"}
 
     if not config.SLACK_WEBHOOK_URL:
-        print("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping Slack delivery.")
+        logger.warning("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping Slack delivery.")
         return {"sent": 0, "skipped": "SLACK_WEBHOOK_URL not set"}
 
     messages = build_messages(result)
     if not messages:
-        print("[SLACK] Only silent sessions in this run. Skipping Slack delivery.")
+        logger.warning("[SLACK] Only silent sessions in this run. Skipping Slack delivery.")
         return {"sent": 0, "skipped": "nothing to report"}
 
     for payload in messages:
         post_to_slack(payload)
-    print(f"[SLACK] Sent {len(messages)} message(s) to Slack.")
+    logger.info(f"[SLACK] Sent {len(messages)} message(s) to Slack.")
     return {"sent": len(messages)}
 
 
@@ -107,13 +110,13 @@ def notify_signup(address: str, contact: dict[str, Any] | None = None) -> bool:
     the sign-up, which is already saved.
     """
     if not config.SLACK_WEBHOOK_URL:
-        print("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the sign-up message.")
+        logger.warning("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the sign-up message.")
         return False
     try:
         post_to_slack({"username": SENDER, "text": build_signup_text(address, contact)})
         return True
     except Exception as exc:
-        print(f"[SLACK] Sign-up message for {address} failed: {exc}")
+        logger.error(f"[SLACK] Sign-up message for {address} failed: {exc}")
         return False
 
 
@@ -123,7 +126,7 @@ def notify_whatsapp_problem(connection: dict[str, Any], error: str) -> bool:
     "WhatsApp needs attention: ACME (+1 555...) - HTTP 401: ...". Never raises.
     """
     if not config.SLACK_WEBHOOK_URL:
-        print("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the WhatsApp alert.")
+        logger.warning("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the WhatsApp alert.")
         return False
     number = connection.get("display_number") or connection.get("phone_number_id")
     text = (
@@ -135,7 +138,7 @@ def notify_whatsapp_problem(connection: dict[str, Any], error: str) -> bool:
         post_to_slack({"username": SENDER, "text": f"*[{label}]* {text}" if label else text})
         return True
     except Exception as exc:
-        print(f"[SLACK] WhatsApp alert failed: {exc}")
+        logger.error(f"[SLACK] WhatsApp alert failed: {exc}")
         return False
 
 
