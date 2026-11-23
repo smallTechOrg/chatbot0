@@ -49,3 +49,9 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   chatbot0's `/embed.js` before slice 4 serves it, so slice 3 keeps the zer0 host until then.
 - **PRs run no CI.** deploy.yml triggers on push to main/staging only, so a PR shows "no checks".
   A slice is gated by pushing the branch merge to `staging` first.
+- **The old widget rendered LLM output as unsanitised HTML.** `FormattedMessage` said "HTML in source
+  text is escaped by marked", but marked does not escape raw HTML. The port renders Markdown through
+  `lib/markdown.ts` (raw HTML shown as text, only http(s)/mailto/tel links, `rel=noopener`) with tests.
+  Lesson: read the library, not the comment.
+- **zer0's `/chat` page not ported.** It collides with the `POST /chat` API path (and `next dev`
+  rewrites), and nothing links to it. Left to the zer0 PR to delete.

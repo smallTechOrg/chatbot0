@@ -31,3 +31,27 @@ export function trackSite(event: SiteEvent, params: Record<string, unknown> = { 
   if (typeof window === "undefined") return;
   (window as AnalyticsWindow).stTrack?.(event, params);
 }
+
+/**
+ * Tell the host page (embed.js forwards it to the host's own GA4) that this visitor sent a first message.
+ * Once per session. `*` is the target origin because any site may embed the widget.
+ */
+export function notifyParentFirstInteraction(sessionId: string): void {
+  const key = `chat_first_sent_${sessionId}`;
+  try {
+    if (localStorage.getItem(key)) return;
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: "ANALYTICS_EVENT",
+          eventName: "chatbot_first_interaction",
+          eventParams: { session_id: sessionId, page_path: window.location.pathname },
+        },
+        "*",
+      );
+    }
+    localStorage.setItem(key, "true");
+  } catch (err) {
+    console.warn("Failed to send GA event", err);
+  }
+}
