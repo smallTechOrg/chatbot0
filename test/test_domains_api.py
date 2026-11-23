@@ -12,6 +12,7 @@ This means **no SQL is executed during the test run itself**.
 Complementary pure-unit tests (no DB required at all) live in
 ``test_domains_service.py``.
 """
+
 import os
 import sys
 from datetime import UTC, datetime
@@ -74,6 +75,7 @@ def mock_service():
 # POST /domains/ – success
 # ---------------------------------------------------------------------------
 
+
 class TestCreateDomain:
     def test_returns_201_on_success(self, client, mock_service):
         response = client.post(
@@ -121,23 +123,35 @@ class TestCreateDomainContact:
     """The chatbot0 sign-up sends who is signing up along with the website."""
 
     def test_contact_reaches_the_service(self, client, mock_service):
-        response = client.post("/domains/", json={
-            "website_url": "acme.com", "contact_name": "  Anjali ", "email": "anjali@acme.com",
-        })
+        response = client.post(
+            "/domains/",
+            json={
+                "website_url": "acme.com",
+                "contact_name": "  Anjali ",
+                "email": "anjali@acme.com",
+            },
+        )
         assert response.status_code == 201
         _, kwargs = mock_service.add_domain.call_args
         assert kwargs["contact"] == {"contact_name": "Anjali", "email": "anjali@acme.com", "mobile": None}
 
     def test_blank_fields_are_not_given(self, client, mock_service):
-        response = client.post("/domains/", json={
-            "website_url": "acme.com", "contact_name": "", "email": "  ", "mobile": "+91 98765 43210",
-        })
+        response = client.post(
+            "/domains/",
+            json={
+                "website_url": "acme.com",
+                "contact_name": "",
+                "email": "  ",
+                "mobile": "+91 98765 43210",
+            },
+        )
         assert response.status_code == 201
         _, kwargs = mock_service.add_domain.call_args
         assert kwargs["contact"] == {"contact_name": None, "email": None, "mobile": "+91 98765 43210"}
 
-    @pytest.mark.parametrize("field,value", [("email", "not-an-email"), ("mobile", "call me"),
-                                             ("contact_name", "x" * 201)])
+    @pytest.mark.parametrize(
+        "field,value", [("email", "not-an-email"), ("mobile", "call me"), ("contact_name", "x" * 201)]
+    )
     def test_bad_contact_returns_422(self, client, mock_service, field, value):
         response = client.post("/domains/", json={"website_url": "acme.com", field: value})
         assert response.status_code == 422
@@ -153,8 +167,7 @@ class TestCreateDomainContact:
 
     def test_sign_up_is_posted_to_slack(self, client, mock_service, notify):
         client.post("/domains/", json={"website_url": "acme.com", "contact_name": "Anjali", "mobile": "9876543210"})
-        notify.assert_called_once_with(
-            "example.com", {"contact_name": "Anjali", "email": None, "mobile": "9876543210"})
+        notify.assert_called_once_with("example.com", {"contact_name": "Anjali", "email": None, "mobile": "9876543210"})
 
     def test_failed_sign_up_is_not_posted(self, client, mock_service, notify):
         mock_service.add_domain.side_effect = DomainAlreadyExistsError("exists")
@@ -165,6 +178,7 @@ class TestCreateDomainContact:
 # ---------------------------------------------------------------------------
 # POST /domains/ – validation errors (handled by marshmallow schema, no DB)
 # ---------------------------------------------------------------------------
+
 
 class TestCreateDomainValidation:
     def test_missing_website_url_returns_422(self, client, mock_service):
@@ -188,27 +202,23 @@ class TestCreateDomainValidation:
 # POST /domains/ – service-layer errors
 # ---------------------------------------------------------------------------
 
+
 class TestCreateDomainServiceErrors:
     def test_duplicate_domain_returns_409(self, client, mock_service):
-        mock_service.add_domain.side_effect = DomainAlreadyExistsError(
-            "A domain for 'example.com' already exists."
-        )
-        response = client.post(
-            "/domains/", json={"website_url": "https://example.com"}
-        )
+        mock_service.add_domain.side_effect = DomainAlreadyExistsError("A domain for 'example.com' already exists.")
+        response = client.post("/domains/", json={"website_url": "https://example.com"})
         assert response.status_code == 409
 
     def test_invalid_url_from_service_returns_422(self, client, mock_service):
         mock_service.add_domain.side_effect = InvalidWebsiteURLError("Bad URL.")
-        response = client.post(
-            "/domains/", json={"website_url": "example.com"}
-        )
+        response = client.post("/domains/", json={"website_url": "example.com"})
         assert response.status_code == 422
 
 
 # ---------------------------------------------------------------------------
 # GET /domains/
 # ---------------------------------------------------------------------------
+
 
 class TestListDomains:
     def test_returns_200(self, client, mock_service):
@@ -231,6 +241,7 @@ class TestListDomains:
 # ---------------------------------------------------------------------------
 # GET /domains/<int:domain_id>
 # ---------------------------------------------------------------------------
+
 
 class TestGetDomain:
     def test_returns_200_when_found(self, client, mock_service):

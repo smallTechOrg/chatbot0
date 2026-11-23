@@ -11,6 +11,7 @@ These cover the two failures that prompted it:
 
 Like the other tests in this project, these need a live database.
 """
+
 import os
 import sys
 import threading
@@ -29,6 +30,7 @@ from config import DATABASE_URL
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def kill_app_connections() -> int:
     """
@@ -54,6 +56,7 @@ def kill_app_connections() -> int:
 # ---------------------------------------------------------------------------
 # Retry behaviour (no database needed)
 # ---------------------------------------------------------------------------
+
 
 class TestRetry:
     def test_reruns_the_operation_after_a_lost_connection(self):
@@ -93,9 +96,7 @@ class TestRetry:
         with patch.object(db_pool.time, "sleep") as sleep:
             with pytest.raises(db_pool.DatabaseUnavailable):
                 db_pool.run_with_retry(
-                    lambda conn: (_ for _ in ()).throw(
-                        psycopg.OperationalError("gone")
-                    ),
+                    lambda conn: (_ for _ in ()).throw(psycopg.OperationalError("gone")),
                     attempts=3,
                 )
         assert sleep.call_count == 2  # between three attempts, not more
@@ -104,6 +105,7 @@ class TestRetry:
 # ---------------------------------------------------------------------------
 # Transaction handling
 # ---------------------------------------------------------------------------
+
 
 class TestGetConnection:
     def test_commits_on_clean_exit(self):
@@ -138,6 +140,7 @@ class TestGetConnection:
 # An overloaded database (reachable, but not answering)
 # ---------------------------------------------------------------------------
 
+
 class TestSlowDatabase:
     """
     On 2026-09-27 the shared instance stopped answering under a scraper burst:
@@ -155,8 +158,7 @@ class TestSlowDatabase:
                 assert cur.fetchone()[0] != "0", "a stuck transaction could pin a connection"
                 cur.execute("SHOW lock_timeout;")
                 assert cur.fetchone()[0] != "0", (
-                    "someone else's migration could pin both connections for the "
-                    "whole statement budget"
+                    "someone else's migration could pin both connections for the whole statement budget"
                 )
 
     def test_a_timed_out_query_is_not_retried(self):
@@ -217,6 +219,7 @@ class TestSlowDatabase:
 # Refilling the pool
 # ---------------------------------------------------------------------------
 
+
 def _borrow_one():
     """Borrow a connection and run the cheapest possible statement on it."""
     with db_pool.get_connection() as conn:
@@ -254,6 +257,7 @@ class TestPoolCheck:
 # ---------------------------------------------------------------------------
 # Pool sizing
 # ---------------------------------------------------------------------------
+
 
 class TestSmallPool:
     """
@@ -308,6 +312,7 @@ class TestSmallPool:
 # ---------------------------------------------------------------------------
 # Recovery from a database restart
 # ---------------------------------------------------------------------------
+
 
 class TestRestartRecovery:
     def test_health_and_api_share_one_pool(self, client):

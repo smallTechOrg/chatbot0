@@ -11,6 +11,7 @@ Covers three fixes:
 3. That fix must not relabel malformed requests: a body that is not JSON still
    has to come back as 415, not 500.
 """
+
 import os
 import sys
 import uuid
@@ -34,8 +35,7 @@ def session_id():
     with db_pool.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO chat_info (session_id) VALUES (%s) "
-                "ON CONFLICT (session_id) DO NOTHING;",
+                "INSERT INTO chat_info (session_id) VALUES (%s) ON CONFLICT (session_id) DO NOTHING;",
                 (sid,),
             )
     yield sid
@@ -47,6 +47,7 @@ def session_id():
 # ---------------------------------------------------------------------------
 # PATCH /chat-info/contact
 # ---------------------------------------------------------------------------
+
 
 class TestContactUpdate:
     def test_contact_details_are_saved(self, client, session_id):
@@ -67,8 +68,7 @@ class TestContactUpdate:
         with db_pool.get_connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
-                    "SELECT contact_name, email, mobile, country "
-                    "FROM chat_info WHERE session_id = %s;",
+                    "SELECT contact_name, email, mobile, country FROM chat_info WHERE session_id = %s;",
                     (session_id,),
                 )
                 row = cur.fetchone()
@@ -82,16 +82,13 @@ class TestContactUpdate:
 
     def test_omitted_fields_keep_their_value(self, client, session_id):
         """COALESCE must not blank out details a later call leaves out."""
-        client.patch("/chat-info/contact",
-                     json={"session_id": session_id, "name": "Ada", "country": "UK"})
-        client.patch("/chat-info/contact",
-                     json={"session_id": session_id, "email": "ada@example.com"})
+        client.patch("/chat-info/contact", json={"session_id": session_id, "name": "Ada", "country": "UK"})
+        client.patch("/chat-info/contact", json={"session_id": session_id, "email": "ada@example.com"})
 
         with db_pool.get_connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
-                    "SELECT contact_name, email, country FROM chat_info "
-                    "WHERE session_id = %s;",
+                    "SELECT contact_name, email, country FROM chat_info WHERE session_id = %s;",
                     (session_id,),
                 )
                 row = cur.fetchone()
@@ -104,6 +101,7 @@ class TestContactUpdate:
 # ---------------------------------------------------------------------------
 # Malformed requests
 # ---------------------------------------------------------------------------
+
 
 class TestMalformedRequests:
     """
@@ -120,15 +118,11 @@ class TestMalformedRequests:
         ],
     )
     def test_non_json_body_is_415_not_500(self, client, method, path):
-        response = getattr(client, method)(
-            path, data="this is not json", content_type="text/plain"
-        )
+        response = getattr(client, method)(path, data="this is not json", content_type="text/plain")
         assert response.status_code == 415
 
     def test_invalid_session_id_is_still_400_with_a_reason(self, client):
-        response = client.get(
-            "/history", query_string={"session_id": "not-a-uuid"}, headers=ORIGIN
-        )
+        response = client.get("/history", query_string={"session_id": "not-a-uuid"}, headers=ORIGIN)
         assert response.status_code == 400
         assert response.get_json()["error"] == "Invalid session id format"
 
@@ -136,6 +130,7 @@ class TestMalformedRequests:
 # ---------------------------------------------------------------------------
 # /health
 # ---------------------------------------------------------------------------
+
 
 class TestHealthReportsThePool:
     """
@@ -164,6 +159,7 @@ class TestHealthReportsThePool:
 # Behaviour when the database is unavailable
 # ---------------------------------------------------------------------------
 
+
 class TestDatabaseOutageResponses:
     """
     Every endpoint must fail in the same JSON shape, so the frontend has one
@@ -171,12 +167,12 @@ class TestDatabaseOutageResponses:
     """
 
     ENDPOINTS = [
-        ("get", "/history", {"query_string": {"session_id": str(uuid.uuid4())},
-                             "headers": ORIGIN}),
-        ("post", "/chat", {"json": {"input": "hi",
-                                    "session_id": str(uuid.uuid4()),
-                                    "request_type": "sales"},
-                           "headers": ORIGIN}),
+        ("get", "/history", {"query_string": {"session_id": str(uuid.uuid4())}, "headers": ORIGIN}),
+        (
+            "post",
+            "/chat",
+            {"json": {"input": "hi", "session_id": str(uuid.uuid4()), "request_type": "sales"}, "headers": ORIGIN},
+        ),
     ]
 
     @pytest.mark.parametrize("method,path,kwargs", ENDPOINTS)

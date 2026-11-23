@@ -11,17 +11,17 @@ def chat_api_validate(request) -> ValidationResponse:
     chat_input_validation_response = validate_chat_user_input(request)
     if not chat_input_validation_response.is_valid:
         return chat_input_validation_response
-    
-    request_type = request.get_json().get('request_type').lower().strip()
+
+    request_type = request.get_json().get("request_type").lower().strip()
     if request_type not in agent_type:
         return ValidationResponse(False, "Need a valid request type")
 
     address_validation_response = validate_address(request)
     if not address_validation_response.is_valid:
-        return address_validation_response 
-    
-    return ValidationResponse(True, "", {"request_type":request_type, "domain":address_validation_response.data})
-    
+        return address_validation_response
+
+    return ValidationResponse(True, "", {"request_type": request_type, "domain": address_validation_response.data})
+
 
 def validate_contact_data(request):
     data = request.get_json()
@@ -30,9 +30,9 @@ def validate_contact_data(request):
     session_validation = validate_session_id(request)
     if not session_validation.is_valid:
         return session_validation
-    name    = data.get("name")
-    email   = data.get("email")
-    mobile  = data.get("mobile")
+    name = data.get("name")
+    email = data.get("email")
+    mobile = data.get("mobile")
     country = data.get("country")
     if not any([name, email, mobile, country]):
         return ValidationResponse(False, "At least one of name, email, mobile, or country is required")
@@ -48,13 +48,13 @@ def validate_update_data(request):
     status = data.get("status")
     is_active = data.get("is_active")
     if not data:
-        return ValidationResponse(False,"data is required")
+        return ValidationResponse(False, "data is required")
     if not validate_session_id(request).is_valid:
         return validate_session_id(request)
     if status and status not in status_type.__members__ and status not in [s.value for s in status_type]:
-        return ValidationResponse(False,"Status not allowed")
+        return ValidationResponse(False, "Status not allowed")
     if is_active and not isinstance(is_active, bool):
-        return ValidationResponse(False,"Invalid input")
+        return ValidationResponse(False, "Invalid input")
     return ValidationResponse(True, "")
 
 
@@ -62,22 +62,22 @@ def validate_history_data(request):
     session_validation_response = validate_session_id(request)
     if not session_validation_response.is_valid:
         return session_validation_response
-    
-    address_validation_response  = validate_address(request)
+
+    address_validation_response = validate_address(request)
     if not address_validation_response.is_valid:
-        return address_validation_response 
+        return address_validation_response
     return ValidationResponse(True, None, {"domain": address_validation_response.data})
 
 
 def validate_chat_user_input(request) -> ValidationResponse:
-    input = request.get_json().get('input', '')
+    input = request.get_json().get("input", "")
     input = input.strip()
     if not input:
-        return ValidationResponse(False,"Please enter a message before sending.")
+        return ValidationResponse(False, "Please enter a message before sending.")
     if len(input) > max_input_length:
         return ValidationResponse(False, "Your message is too long. Please limit to {max_input_length} characters.")
     return ValidationResponse(True, "")
-    
+
 
 def validate_session_id(request):
     session_id = request.args.get("session_id")
@@ -94,9 +94,9 @@ def validate_session_id(request):
 
     except Exception as e:
         print(f"[Error] {e}")
-        return {"is_valid":False, "message":"Internal Server Error", "status":HTTPStatus.INTERNAL_SERVER_ERROR}
+        return {"is_valid": False, "message": "Internal Server Error", "status": HTTPStatus.INTERNAL_SERVER_ERROR}
 
-    
+
 def validate_address(request):
     """Checks whether the given address exists. Returns (is_valid, domain or message)."""
     address = get_request_address(request)

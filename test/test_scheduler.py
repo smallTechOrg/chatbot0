@@ -2,6 +2,7 @@
 Tests for the scheduler: job registration, one scheduler per process, and errors
 not stopping the next run. periodic_summary() is stubbed.
 """
+
 import os
 import sys
 

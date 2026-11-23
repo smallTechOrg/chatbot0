@@ -17,6 +17,7 @@ from scheduler import start_scheduler, stop_scheduler
 # Application factory
 # ---------------------------------------------------------------------------
 
+
 def create_app() -> Flask:
     flask_app = Flask(__name__)
 
@@ -69,8 +70,9 @@ def create_app() -> Flask:
     CORS(flask_app)
 
     # -- Background jobs -------------------------------------------------------
-    # Locally the periodic summary runs in a thread of this process. On Cloud Run SCHEDULER_ENABLED is false and Cloud Scheduler
-    # calls POST /jobs/periodic-summary instead (see api/jobs.py).
+    # Locally the periodic summary runs in a thread of this process. On Cloud Run
+    # SCHEDULER_ENABLED is false and Cloud Scheduler calls POST /jobs/periodic-summary
+    # instead (see api/jobs.py).
     if SCHEDULER_ENABLED:
         start_scheduler()
     else:
@@ -81,9 +83,11 @@ def create_app() -> Flask:
 
 app = create_app()
 
-@app.route('/chat-ui')
+
+@app.route("/chat-ui")
 def chat_ui():
-    return render_template('chat.html')
+    return render_template("chat.html")
+
 
 if __name__ == "__main__":
     # In debug, Werkzeug's reloader runs this file in a parent and a child process.

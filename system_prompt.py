@@ -15,15 +15,14 @@ Formatting Rules:
 def get_prompt(domain, agent_type, prompt_type):
     # Load both prompts from DB
     if prompt_type == "system" and agent_type == "sales":
-
-        common_prompt= load_prompt_from_db(domain, agent_type, "base-prompt")
+        common_prompt = load_prompt_from_db(domain, agent_type, "base-prompt")
         # if common_data is None:
         #     # Use default or find parent.
         #     common_data = load_prompt_from_db(DEFAULT_DOMAIN, agent_type, "base-prompt")
-        company_prompt = load_prompt_from_db(domain, agent_type, "company")    
+        company_prompt = load_prompt_from_db(domain, agent_type, "company")
         # if company_data is None:
-        #     company_data = load_prompt_from_db(DEFAULT_DOMAIN, agent_type, "company") 
-            
+        #     company_data = load_prompt_from_db(DEFAULT_DOMAIN, agent_type, "company")
+
         parts = []
         if common_prompt:
             parts.append(common_prompt)
@@ -33,9 +32,8 @@ def get_prompt(domain, agent_type, prompt_type):
         # Join them into one prompt string and append formatting instructions
         return "\n\n".join(parts) + FORMATTING_INSTRUCTION
 
-    prompt =  load_prompt_from_db(domain, agent_type, prompt_type)
+    prompt = load_prompt_from_db(domain, agent_type, prompt_type)
     return prompt or ""
-
 
 
 def load_prompt_from_db(domain: str, agent_type: str, prompt_type: str):
@@ -47,7 +45,7 @@ def load_prompt_from_db(domain: str, agent_type: str, prompt_type: str):
 
         if row is None:
             print(f"Prompt not found in DB: {domain}/{agent_type}/{prompt_type}, looking for parent prompt")
-            parent_domain = find_parent_key(domain) 
+            parent_domain = find_parent_key(domain)
             row = find_prompt(parent_domain, agent_type, prompt_type)
             if row is None:
                 print(f"Prompt not found in DB for parent Domain: {domain}/{agent_type}/{prompt_type}")
@@ -56,30 +54,38 @@ def load_prompt_from_db(domain: str, agent_type: str, prompt_type: str):
         return row[0]
 
     except Exception as e:
-        raise RuntimeError(f"Failed to load prompt from DB: {e}")
+        raise RuntimeError(f"Failed to load prompt from DB: {e}") from e
+
 
 @with_connection
 def find_parent_key(conn, key):
     with conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT parent.key
             FROM domains child
             LEFT JOIN domains parent ON child.parent = parent.id
             WHERE child.key = %s;
-        """, (key,))
+        """,
+            (key,),
+        )
         row = cur.fetchone()
         return row[0] if row else None
+
 
 @with_connection
 def find_prompt(conn, domain, agent_type, prompt_type):
     # Errors propagate so @with_connection can retry a lost connection;
     # load_prompt_from_db wraps whatever survives the retries.
     with conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT text
             FROM prompts
             WHERE domain = %s AND agent_type = %s AND type = %s
             LIMIT 1;
-        """, (domain, agent_type, prompt_type))
+        """,
+            (domain, agent_type, prompt_type),
+        )
 
         return cur.fetchone()

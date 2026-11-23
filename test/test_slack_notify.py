@@ -2,6 +2,7 @@
 Tests for formatting a periodic_summary() result as a Slack message.
 The webhook POST is stubbed; nothing reaches Slack.
 """
+
 import os
 import sys
 from datetime import UTC, datetime
@@ -70,23 +71,29 @@ def posted(monkeypatch):
 
 
 class TestFormatTime:
-    @pytest.mark.parametrize("value, expected", [
-        (datetime(2026, 10, 7, 17, 0, tzinfo=IST), "7th Oct 2026 - 5 pm IST"),
-        (datetime(2026, 10, 1, 0, 5, tzinfo=IST), "1st Oct 2026 - 12:05 am IST"),
-        (datetime(2026, 10, 2, 9, 30, tzinfo=IST), "2nd Oct 2026 - 9:30 am IST"),
-        (datetime(2026, 10, 3, 12, 0, tzinfo=IST), "3rd Oct 2026 - 12 pm IST"),
-        (datetime(2026, 10, 11, 23, 59, tzinfo=IST), "11th Oct 2026 - 11:59 pm IST"),
-        (datetime(2026, 10, 22, 15, 0, tzinfo=IST), "22nd Oct 2026 - 3 pm IST"),
-        (datetime(2026, 11, 13, 1, 0, tzinfo=IST), "13th Nov 2026 - 1 am IST"),
-    ])
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            (datetime(2026, 10, 7, 17, 0, tzinfo=IST), "7th Oct 2026 - 5 pm IST"),
+            (datetime(2026, 10, 1, 0, 5, tzinfo=IST), "1st Oct 2026 - 12:05 am IST"),
+            (datetime(2026, 10, 2, 9, 30, tzinfo=IST), "2nd Oct 2026 - 9:30 am IST"),
+            (datetime(2026, 10, 3, 12, 0, tzinfo=IST), "3rd Oct 2026 - 12 pm IST"),
+            (datetime(2026, 10, 11, 23, 59, tzinfo=IST), "11th Oct 2026 - 11:59 pm IST"),
+            (datetime(2026, 10, 22, 15, 0, tzinfo=IST), "22nd Oct 2026 - 3 pm IST"),
+            (datetime(2026, 11, 13, 1, 0, tzinfo=IST), "13th Nov 2026 - 1 am IST"),
+        ],
+    )
     def test_header_time(self, value, expected):
         assert slack_notify.format_header_time(value) == expected
 
-    @pytest.mark.parametrize("value, expected", [
-        (datetime(2026, 10, 7, 16, 13, tzinfo=IST), "7th Oct, 4:13 pm"),
-        (datetime(2026, 10, 7, 16, 0, tzinfo=IST), "7th Oct, 4 pm"),
-        (datetime(2026, 10, 7, 0, 7, tzinfo=IST), "7th Oct, 12:07 am"),
-    ])
+    @pytest.mark.parametrize(
+        "value, expected",
+        [
+            (datetime(2026, 10, 7, 16, 13, tzinfo=IST), "7th Oct, 4:13 pm"),
+            (datetime(2026, 10, 7, 16, 0, tzinfo=IST), "7th Oct, 4 pm"),
+            (datetime(2026, 10, 7, 0, 7, tzinfo=IST), "7th Oct, 12:07 am"),
+        ],
+    )
     def test_line_time(self, value, expected):
         assert slack_notify.format_line_time(value) == expected
 
@@ -111,7 +118,7 @@ class TestBuildMessages:
                 f"{HEADER}\n"
                 "7th Oct, 4:11 pm - SMALLTECH - Lead 1 - Summary 1.\n"
                 "7th Oct, 4:12 pm - SMALLTECH - Lead 2 - Summary 2."
-            )
+            ),
         }
 
     def test_header_is_a_dashboard_link(self):
@@ -157,7 +164,10 @@ class TestBuildMessages:
     def test_silent_session_gets_no_line(self):
         silent = _session(2, silent=True, summary="Opened the chat but did not write anything.")
         [message] = slack_notify.build_messages(_result([_session(1), silent]))
-        assert message == {"username": "chatbot0-updates", "text": f"{HEADER}\n7th Oct, 4:11 pm - SMALLTECH - Lead 1 - Summary 1."}
+        assert message == {
+            "username": "chatbot0-updates",
+            "text": f"{HEADER}\n7th Oct, 4:11 pm - SMALLTECH - Lead 1 - Summary 1.",
+        }
 
     def test_only_silent_sessions_give_no_messages(self):
         silent = _session(1, silent=True, summary="Opened the chat but did not write anything.")
@@ -172,8 +182,7 @@ class TestBuildMessages:
         bad["error"] = bad["llm_error"] = "rate_limit_exceeded"
         [message] = slack_notify.build_messages(_result([silent, bad]))
         assert message["text"] == (
-            f"{HEADER}\n"
-            "Failed to generate a summary. LLM calls failed with error: rate_limit_exceeded."
+            f"{HEADER}\nFailed to generate a summary. LLM calls failed with error: rate_limit_exceeded."
         )
 
     def test_llm_failure_exact_format(self):
@@ -188,7 +197,7 @@ class TestBuildMessages:
             "text": (
                 f"<{DASHBOARD}|chatbot0 Summary - 7th Oct 2026 - 6 pm IST>\n"
                 "Failed to generate a summary. LLM calls failed with error: RESOURCE_EXHAUSTED."
-            )
+            ),
         }
 
     def test_partial_llm_failure_lists_the_good_ones_then_the_count(self):
@@ -212,8 +221,7 @@ class TestBuildMessages:
         bad["error"] = bad["llm_error"] = "model_not_found"
         [message] = slack_notify.build_messages(_result([_session(1), bad]))
         assert message["text"].endswith(
-            "Failed to generate a summary for 1 conversation. "
-            "LLM calls failed with error: model_not_found."
+            "Failed to generate a summary for 1 conversation. LLM calls failed with error: model_not_found."
         )
 
     def test_distinct_llm_errors_are_listed_once_each(self):
@@ -340,7 +348,8 @@ class TestEnvironmentMarker:
 class TestSignupMessage:
     def test_text_has_site_and_contact(self):
         text = slack_notify.build_signup_text(
-            "acme.com", {"contact_name": "Anjali <A>", "email": "anjali@acme.com", "mobile": None})
+            "acme.com", {"contact_name": "Anjali <A>", "email": "anjali@acme.com", "mobile": None}
+        )
         assert text == "*New chatbot0 sign-up:* acme.com - Anjali &lt;A&gt; - anjali@acme.com"
 
     def test_text_without_contact(self):
@@ -354,8 +363,10 @@ class TestSignupMessage:
         monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.example/x")
         assert slack_notify.notify_signup("acme.com", {"contact_name": "Anjali"}) is True
         assert len(posted) == 1
-        assert posted[0]["json"] == {"username": "chatbot0-updates",
-                                     "text": "*New chatbot0 sign-up:* acme.com - Anjali"}
+        assert posted[0]["json"] == {
+            "username": "chatbot0-updates",
+            "text": "*New chatbot0 sign-up:* acme.com - Anjali",
+        }
 
     def test_no_webhook_skips(self, monkeypatch, posted):
         monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", None)

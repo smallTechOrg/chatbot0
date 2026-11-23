@@ -7,6 +7,7 @@ picks the domain, so prompts follow the domain hierarchy as on the web. Chats
 are pull-only: the customer writes first, so free-form replies are allowed
 (WhatsApp's 24-hour service window).
 """
+
 from __future__ import annotations
 
 import traceback
@@ -75,18 +76,32 @@ def iter_events(payload: dict) -> Iterator[dict]:
                     continue
                 text = (_message_text(msg) or "").strip()
                 if text:
-                    yield {"kind": "text", "phone_number_id": pnid, "wa_id": wa_id,
-                           "name": names.get(wa_id), "message_id": mid, "text": text}
+                    yield {
+                        "kind": "text",
+                        "phone_number_id": pnid,
+                        "wa_id": wa_id,
+                        "name": names.get(wa_id),
+                        "message_id": mid,
+                        "text": text,
+                    }
                 elif msg.get("type") in _MEDIA_TYPES:
-                    yield {"kind": "media", "phone_number_id": pnid, "wa_id": wa_id,
-                           "message_id": mid, "type": msg.get("type")}
+                    yield {
+                        "kind": "media",
+                        "phone_number_id": pnid,
+                        "wa_id": wa_id,
+                        "message_id": mid,
+                        "type": msg.get("type"),
+                    }
             for status in value.get("statuses") or []:
                 if status.get("status") == "failed":
                     errs = status.get("errors") or [{}]
                     err = errs[0]
                     detail = (err.get("error_data") or {}).get("details") or err.get("message") or err.get("title")
-                    yield {"kind": "failed_status", "phone_number_id": pnid,
-                           "error": f"delivery failed ({err.get('code')}): {detail}"}
+                    yield {
+                        "kind": "failed_status",
+                        "phone_number_id": pnid,
+                        "error": f"delivery failed ({err.get('code')}): {detail}",
+                    }
 
 
 def handle_payload(connection: dict, payload: dict) -> None:
@@ -139,8 +154,9 @@ def _send(conn: dict, wa_id: str, bodies: list[str]) -> bool:
         if not result.ok:
             # Any error Meta answers with (bad token, recipient not allowed,
             # rate limit) needs a person; a network blip does not.
-            _record_failure(conn, result.error or "send failed",
-                            token_problem=result.token_problem or result.code is not None)
+            _record_failure(
+                conn, result.error or "send failed", token_problem=result.token_problem or result.code is not None
+            )
             return False
     return True
 

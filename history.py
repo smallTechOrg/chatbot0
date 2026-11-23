@@ -27,6 +27,7 @@ class PooledChatMessageHistory(PostgresChatMessageHistory):
         Run one parent operation on a pooled connection, with retry. A retry
         can write a message two times, which is better than a failed request.
         """
+
         def with_connection(conn):
             self._connection = conn
             try:
@@ -40,8 +41,7 @@ class PooledChatMessageHistory(PostgresChatMessageHistory):
         return self._run(super().get_messages, "chat history read")
 
     def add_messages(self, messages) -> None:
-        self._run(lambda: super(PooledChatMessageHistory, self).add_messages(messages),
-                  "chat history write")
+        self._run(lambda: super(PooledChatMessageHistory, self).add_messages(messages), "chat history write")
 
     def clear(self) -> None:
         self._run(super().clear, "chat history clear")
@@ -54,11 +54,12 @@ def get_session_history(session_id):
 def _message_mapping(messages):
     return [
         {
-            "type": msg.type,   # "human" or "ai"
-            "content": msg.content
+            "type": msg.type,  # "human" or "ai"
+            "content": msg.content,
         }
         for msg in messages
     ]
+
 
 def get_history(session_id: str, domain):
     """
@@ -77,7 +78,4 @@ def get_history(session_id: str, domain):
         messages = history.messages
         status = HTTPStatus.CREATED
 
-    return {
-        "session_id": session_id,
-        "history": _message_mapping(messages)
-    }, status
+    return {"session_id": session_id, "history": _message_mapping(messages)}, status

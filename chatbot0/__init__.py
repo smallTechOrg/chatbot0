@@ -138,8 +138,12 @@ def industries():
     # Old zer0 links carry ?industry=<name>; that entry is highlighted and named at the top of the page.
     # The canonical URL stays /industries.
     return _render(
-        "chatbot0/industries.html", path="/industries", title=INDUSTRIES_TITLE, description=INDUSTRIES_DESCRIPTION,
-        industries=content.INDUSTRIES, selected=content.find_industry(request.args.get("industry")),
+        "chatbot0/industries.html",
+        path="/industries",
+        title=INDUSTRIES_TITLE,
+        description=INDUSTRIES_DESCRIPTION,
+        industries=content.INDUSTRIES,
+        selected=content.find_industry(request.args.get("industry")),
     )
 
 
@@ -151,8 +155,12 @@ def about():
 @chatbot0_bp.route("/signup", methods=["GET"])
 def signup():
     return _render(
-        "chatbot0/signup.html", path="/signup", title=SIGNUP_TITLE, description=SIGNUP_DESCRIPTION,
-        default_colour=content.DEFAULT_WIDGET_COLOUR, widget_colours=content.WIDGET_COLOURS,
+        "chatbot0/signup.html",
+        path="/signup",
+        title=SIGNUP_TITLE,
+        description=SIGNUP_DESCRIPTION,
+        default_colour=content.DEFAULT_WIDGET_COLOUR,
+        widget_colours=content.WIDGET_COLOURS,
     )
 
 
@@ -188,8 +196,15 @@ def register_host_routing(app: Flask) -> None:
     and POST /prompt reach the API on this host unchanged."""
     hosts = _chat_hosts()
     pages = {
-        "/": landing, "/pricing": pricing, "/sales": sales, "/support": support, "/industries": industries,
-        "/about": about, "/signup": signup, "/robots.txt": robots, "/sitemap.xml": sitemap,
+        "/": landing,
+        "/pricing": pricing,
+        "/sales": sales,
+        "/support": support,
+        "/industries": industries,
+        "/about": about,
+        "/signup": signup,
+        "/robots.txt": robots,
+        "/sitemap.xml": sitemap,
     }
 
     @app.before_request
@@ -203,5 +218,5 @@ def register_host_routing(app: Flask) -> None:
         if path in pages:
             return pages[path]()
         if path.startswith("/static/"):
-            return send_from_directory(_STATIC_DIR, path[len("/static/"):])
+            return send_from_directory(_STATIC_DIR, path[len("/static/") :])
         return None

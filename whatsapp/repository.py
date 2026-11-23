@@ -1,4 +1,5 @@
 """All SQL for the WhatsApp integration. Credentials are stored encrypted."""
+
 from __future__ import annotations
 
 import secrets
@@ -82,15 +83,26 @@ def create_connection(conn, phone_number_id: str, domain_key: str, access_token:
             VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING {_PUBLIC};
             """,
-            (str(uuid.uuid4()), phone_number_id, domain_key, crypto.encrypt(access_token),
-             crypto.encrypt(app_secret), secrets.token_urlsafe(24)),
+            (
+                str(uuid.uuid4()),
+                phone_number_id,
+                domain_key,
+                crypto.encrypt(access_token),
+                crypto.encrypt(app_secret),
+                secrets.token_urlsafe(24),
+            ),
         )
         return cur.fetchone()
 
 
 @with_connection
-def update_credentials(conn, connection_id: str, access_token: str | None = None,
-                       app_secret: str | None = None, domain_key: str | None = None) -> bool:
+def update_credentials(
+    conn,
+    connection_id: str,
+    access_token: str | None = None,
+    app_secret: str | None = None,
+    domain_key: str | None = None,
+) -> bool:
     """Replace any of the token, app secret or domain. Clears the error state."""
     with conn.cursor() as cur:
         if domain_key:
@@ -108,9 +120,12 @@ def update_credentials(conn, connection_id: str, access_token: str | None = None
                 updated_at = NOW()
             WHERE id = %s;
             """,
-            (crypto.encrypt(access_token) if access_token else None,
-             crypto.encrypt(app_secret) if app_secret else None,
-             domain_key or None, connection_id),
+            (
+                crypto.encrypt(access_token) if access_token else None,
+                crypto.encrypt(app_secret) if app_secret else None,
+                domain_key or None,
+                connection_id,
+            ),
         )
         return cur.rowcount > 0
 

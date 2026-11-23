@@ -13,6 +13,7 @@ The reply is sent before the POST returns. Meta waits about 20 seconds for a
 moved to a background thread could freeze mid-reply. Redeliveries are dropped
 by message id.
 """
+
 import hmac
 import json
 import traceback
@@ -51,12 +52,15 @@ def receive(connection_id):
     try:
         connection = repository.get_connection_with_credentials(connection_id)
     except crypto.InvalidToken:
-        print(f"[WHATSAPP] connection {connection_id}: stored credentials cannot be decrypted "
-              "(CHATBOT0_SECRET_KEY changed?). Re-enter them on the admin page.")
+        print(
+            f"[WHATSAPP] connection {connection_id}: stored credentials cannot be decrypted "
+            "(CHATBOT0_SECRET_KEY changed?). Re-enter them on the admin page."
+        )
         return _plain("Unavailable", HTTPStatus.SERVICE_UNAVAILABLE)
     raw = request.get_data()
-    if not connection or not signature_is_valid(raw, request.headers.get("X-Hub-Signature-256"),
-                                                connection["app_secret"]):
+    if not connection or not signature_is_valid(
+        raw, request.headers.get("X-Hub-Signature-256"), connection["app_secret"]
+    ):
         return _plain("Forbidden", HTTPStatus.FORBIDDEN)
     try:
         payload = json.loads(raw)

@@ -5,6 +5,7 @@ Nothing else calls ``os.getenv``. Modules import the name they need from this
 module, so there is one place to see what is configurable, what its default is,
 and what belongs in ``.env`` -- which carries values only, never definitions.
 """
+
 import os
 import re
 from enum import Enum
@@ -140,6 +141,7 @@ db_name = _required("DB_NAME")
 table_name = os.getenv("DB_TABLE_NAME", "chat_table")
 DATABASE_URL = _required("DATABASE_URL") + db_name
 
+
 def _redact_password(url: str) -> str:
     """The URL with its password replaced, for logs."""
     return re.sub(r"(://[^:/@]+:)[^/]*@", r"\1***@", url)
@@ -207,10 +209,10 @@ DB_STARTUP_WAIT = float(os.getenv("DB_STARTUP_WAIT", "5"))
 DB_BOOTSTRAP_ATTEMPTS = int(os.getenv("DB_BOOTSTRAP_ATTEMPTS", "600"))
 
 
-
 class agent_type(str, Enum):
     SALES = "sales"
     GENERIC = "generic"
+
 
 # Allowed statuses in dashboard
 class status_type(str, Enum):

@@ -3,9 +3,11 @@ Shared PostgreSQL connection pool. All database access uses it, including
 /health. The pool tests each connection before use, replaces old connections,
 and retries when the database is not available.
 """
+
 from __future__ import annotations
 
 import atexit
+import contextlib
 import functools
 import signal
 import threading
@@ -13,14 +15,12 @@ import time
 import traceback
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, TypeVar
+from typing import Any
 
 import psycopg
 from psycopg_pool import ConnectionPool
 
 import config
-
-T = TypeVar("T")
 
 # Settings come from config.py. This module does not read the environment.
 
@@ -39,9 +39,7 @@ NON_RETRYABLE_ERRORS = (
 
 
 def _is_retryable(exc: BaseException) -> bool:
-    return isinstance(exc, RETRYABLE_ERRORS) and not isinstance(
-        exc, NON_RETRYABLE_ERRORS
-    )
+    return isinstance(exc, RETRYABLE_ERRORS) and not isinstance(exc, NON_RETRYABLE_ERRORS)
 
 
 class DatabaseUnavailable(psycopg.OperationalError):
@@ -151,10 +149,8 @@ def _handle_sigterm(signum, frame):
 
 atexit.register(_close_pool_at_exit)
 
-try:
+with contextlib.suppress(ValueError, OSError):  # not the main thread
     signal.signal(signal.SIGTERM, _handle_sigterm)
-except (ValueError, OSError):  # pragma: no cover - not the main thread
-    pass
 
 
 # ---------------------------------------------------------------------------
@@ -191,10 +187,8 @@ def _track_borrow_depth() -> Iterator[None]:
 
 def _rollback_quietly(conn: psycopg.Connection) -> None:
     """Roll back without masking the error that got us here."""
-    try:
+    with contextlib.suppress(Exception):  # the connection may already be gone
         conn.rollback()
-    except Exception:  # pragma: no cover - the connection is already gone
-        pass
 
 
 def _getconn_with_retry(
@@ -215,16 +209,11 @@ def _getconn_with_retry(
             last_error = exc
             if attempt == attempts:
                 break
-            print(
-                f"Database unreachable (attempt {attempt}/{attempts}): {exc} "
-                f"-- retrying in {delay:.1f}s"
-            )
+            print(f"Database unreachable (attempt {attempt}/{attempts}): {exc} -- retrying in {delay:.1f}s")
             time.sleep(delay)
             delay = min(delay * 2, config.DB_RETRY_MAX_DELAY)
 
-    raise DatabaseUnavailable(
-        f"No database connection after {attempts} attempt(s): {last_error}"
-    ) from last_error
+    raise DatabaseUnavailable(f"No database connection after {attempts} attempt(s): {last_error}") from last_error
 
 
 @contextmanager
@@ -261,7 +250,7 @@ def get_connection(
             pool.putconn(conn)
 
 
-def run_with_retry(
+def run_with_retry[T](
     operation: Callable[[psycopg.Connection], T],
     *,
     attempts: int | None = None,
@@ -289,18 +278,15 @@ def run_with_retry(
             if attempt == attempts:
                 break
             print(
-                f"{what} failed on a lost connection (attempt {attempt}/"
-                f"{attempts}): {exc} -- retrying in {delay:.1f}s"
+                f"{what} failed on a lost connection (attempt {attempt}/{attempts}): {exc} -- retrying in {delay:.1f}s"
             )
             time.sleep(delay)
             delay = min(delay * 2, config.DB_RETRY_MAX_DELAY)
 
-    raise DatabaseUnavailable(
-        f"{what} failed after {attempts} attempt(s): {last_error}"
-    ) from last_error
+    raise DatabaseUnavailable(f"{what} failed after {attempts} attempt(s): {last_error}") from last_error
 
 
-def with_connection(fn: Callable[..., T]) -> Callable[..., T]:
+def with_connection[T](fn: Callable[..., T]) -> Callable[..., T]:
     """
     Give a function a pooled connection as the first argument, with retry. For
     a method, use run_with_retry: this decorator puts the connection before
@@ -315,4 +301,3 @@ def with_connection(fn: Callable[..., T]) -> Callable[..., T]:
         )
 
     return wrapper
-

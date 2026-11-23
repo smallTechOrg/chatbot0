@@ -10,6 +10,7 @@ Rules enforced here:
 The service depends on ``DomainRepository`` via constructor injection so that
 tests can provide a mock without touching the database.
 """
+
 from __future__ import annotations
 
 import re
@@ -20,6 +21,7 @@ from domains.repository import DomainRepository
 # ---------------------------------------------------------------------------
 # Domain-specific exceptions
 # ---------------------------------------------------------------------------
+
 
 class DomainAlreadyExistsError(Exception):
     """Raised when a domain with the same extracted address already exists."""
@@ -36,6 +38,7 @@ class InvalidWebsiteURLError(Exception):
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
+
 
 class DomainService:
     """
@@ -95,22 +98,14 @@ class DomainService:
             # have written this one and stopped before the www variant, which
             # then no request can reach. Finish it here, so a retry repairs the
             # registration instead of failing on the address that exists.
-            self._ensure_www(
-                address, existing.get("key"), existing.get("parent_id")
-            )
-            raise DomainAlreadyExistsError(
-                f"A domain for '{address}' already exists."
-            )
+            self._ensure_www(address, existing.get("key"), existing.get("parent_id"))
+            raise DomainAlreadyExistsError(f"A domain for '{address}' already exists.")
 
         if parent_id is not None and self._repo.find_by_id(parent_id) is None:
-            raise ParentDomainNotFoundError(
-                f"Parent domain with id={parent_id} does not exist."
-            )
+            raise ParentDomainNotFoundError(f"Parent domain with id={parent_id} does not exist.")
 
         resolved_key = self._resolve_key(key, address)
-        domain = self._repo.create(
-            key=resolved_key, address=address, parent_id=parent_id, **(contact or {})
-        )
+        domain = self._repo.create(key=resolved_key, address=address, parent_id=parent_id, **(contact or {}))
 
         # Register the www variant too, under the same key, so a lookup gives
         # the same key with or without the prefix.
@@ -167,17 +162,13 @@ class DomainService:
         hostname: str | None = parsed.hostname  # lowercased, port stripped
 
         if not hostname:
-            raise InvalidWebsiteURLError(
-                f"Cannot extract a hostname from: {website_url!r}"
-            )
+            raise InvalidWebsiteURLError(f"Cannot extract a hostname from: {website_url!r}")
 
         if hostname.startswith("www."):
             hostname = hostname[4:]
 
         if "." not in hostname:
-            raise InvalidWebsiteURLError(
-                f"Extracted hostname '{hostname}' is not a valid domain (no TLD)."
-            )
+            raise InvalidWebsiteURLError(f"Extracted hostname '{hostname}' is not a valid domain (no TLD).")
 
         return hostname
 

@@ -1,4 +1,5 @@
 """Admin pages: sign-in, CSRF, and the WhatsApp connection flows (Graph API stubbed)."""
+
 import os
 import re
 import sys
@@ -24,8 +25,11 @@ def configured(monkeypatch):
     monkeypatch.setattr(config, "CHATBOT0_SECRET_KEY", "unit-test-secret-key")
     monkeypatch.setattr(config, "CHATBOT0_ADMIN_PASSWORD", PASSWORD)
     monkeypatch.setattr(flask_app, "secret_key", crypto.session_signing_key())
-    monkeypatch.setattr(admin, "check_number", lambda pnid, token: GraphResult(
-        True, {"display_phone_number": "+1 555 0100", "verified_name": "Test Biz"}))
+    monkeypatch.setattr(
+        admin,
+        "check_number",
+        lambda pnid, token: GraphResult(True, {"display_phone_number": "+1 555 0100", "verified_name": "Test Biz"}),
+    )
 
 
 @pytest.fixture
@@ -79,9 +83,16 @@ def test_connect_number_shows_webhook_and_hides_secrets(client, cleanup):
     key = re.search(r'<option value="([^"]+)"', domain).group(1)
     pnid = str(uuid.uuid4().int)[:15]
     cleanup.append(pnid)
-    r = client.post("/chatbot0/admin/whatsapp", data={
-        "csrf": token, "phone_number_id": pnid, "domain_key": key,
-        "access_token": "EAAsecret-token-value", "app_secret": "super-app-secret"})
+    r = client.post(
+        "/chatbot0/admin/whatsapp",
+        data={
+            "csrf": token,
+            "phone_number_id": pnid,
+            "domain_key": key,
+            "access_token": "EAAsecret-token-value",
+            "app_secret": "super-app-secret",
+        },
+    )
     assert r.status_code == 302
     page = client.get(r.headers["Location"]).get_data(as_text=True)
     conn_id = r.headers["Location"].rsplit("/", 1)[1]
@@ -91,16 +102,31 @@ def test_connect_number_shows_webhook_and_hides_secrets(client, cleanup):
     assert "Test Biz" in page and repository.get_connection(conn_id)["status"] == "active"
 
 
-@pytest.mark.parametrize("pasted", [
-    "\u200e{}\u200f", "\u00a0{} ", "ID: {}", "Phone number ID: {}", "\ufeff{}\u200b", "{}\n",
-])
+@pytest.mark.parametrize(
+    "pasted",
+    [
+        "\u200e{}\u200f",
+        "\u00a0{} ",
+        "ID: {}",
+        "Phone number ID: {}",
+        "\ufeff{}\u200b",
+        "{}\n",
+    ],
+)
 def test_pasted_id_with_invisible_characters_is_accepted(client, cleanup, pasted):
     token = login(client)
     pnid = str(uuid.uuid4().int)[:16]
     cleanup.append(pnid)
-    r = client.post("/chatbot0/admin/whatsapp", data={
-        "csrf": token, "phone_number_id": pasted.format(pnid), "domain_key": "COMMON",
-        "access_token": "\u200etok ", "app_secret": " sec\u00a0"})
+    r = client.post(
+        "/chatbot0/admin/whatsapp",
+        data={
+            "csrf": token,
+            "phone_number_id": pasted.format(pnid),
+            "domain_key": "COMMON",
+            "access_token": "\u200etok ",
+            "app_secret": " sec\u00a0",
+        },
+    )
     assert r.status_code == 302, r.get_data(as_text=True)
     full = repository.get_connection_by_number(pnid)
     assert (full["access_token"], full["app_secret"]) == ("tok", "sec")
@@ -108,9 +134,16 @@ def test_pasted_id_with_invisible_characters_is_accepted(client, cleanup, pasted
 
 def test_phone_number_instead_of_id_is_explained(client):
     token = login(client)
-    r = client.post("/chatbot0/admin/whatsapp", data={
-        "csrf": token, "phone_number_id": "+1 555 0100", "domain_key": "COMMON",
-        "access_token": "x", "app_secret": "y"})
+    r = client.post(
+        "/chatbot0/admin/whatsapp",
+        data={
+            "csrf": token,
+            "phone_number_id": "+1 555 0100",
+            "domain_key": "COMMON",
+            "access_token": "x",
+            "app_secret": "y",
+        },
+    )
     assert "numeric ID" in r.get_data(as_text=True) and "Received 11 characters" in r.get_data(as_text=True)
 
 
@@ -118,8 +151,11 @@ def test_test_message_outside_window_shows_hint(client, cleanup, monkeypatch):
     pnid = str(uuid.uuid4().int)[:15]
     cleanup.append(pnid)
     row = repository.create_connection(pnid, "COMMON", "tok", "sec")
-    monkeypatch.setattr(admin, "send_text", lambda *a: GraphResult(False, error="HTTP 400: Re-engagement message", code=131047))
+    monkeypatch.setattr(
+        admin, "send_text", lambda *a: GraphResult(False, error="HTTP 400: Re-engagement message", code=131047)
+    )
     token = login(client)
-    r = client.post(f"/chatbot0/admin/whatsapp/{row['id']}/test",
-                    data={"csrf": token, "to": "919876543210"}, follow_redirects=True)
+    r = client.post(
+        f"/chatbot0/admin/whatsapp/{row['id']}/test", data={"csrf": token, "to": "919876543210"}, follow_redirects=True
+    )
     assert "last 24 hours" in r.get_data(as_text=True)

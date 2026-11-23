@@ -13,4 +13,3 @@ def register_blueprints(app):
     app.register_blueprint(prompt_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(whatsapp_bp)
-

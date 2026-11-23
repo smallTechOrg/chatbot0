@@ -2,6 +2,7 @@
 Tests for config: settings with no default stop startup when missing, the
 environment label, and the password redaction used in logs.
 """
+
 import os
 import subprocess
 import sys

@@ -6,6 +6,7 @@ Both keys come from CHATBOT0_SECRET_KEY, each derived for its own purpose, so
 the cookie key can never decrypt a token. Changing CHATBOT0_SECRET_KEY makes
 stored tokens unreadable: they then have to be entered again.
 """
+
 from __future__ import annotations
 
 import base64

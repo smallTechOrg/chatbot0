@@ -11,6 +11,7 @@ audience is config.JOBS_OIDC_AUDIENCE and whose email is one of
 config.JOBS_ALLOWED_INVOKERS. Cloud Scheduler adds that token itself when the
 job is created with --oidc-service-account-email.
 """
+
 import contextlib
 import threading
 import traceback
@@ -55,9 +56,7 @@ def verify_invoker(auth_header: str) -> str:
         raise PermissionError("missing bearer token")
 
     try:
-        claims = id_token.verify_oauth2_token(
-            token, _google_request, audience=config.JOBS_OIDC_AUDIENCE
-        )
+        claims = id_token.verify_oauth2_token(token, _google_request, audience=config.JOBS_OIDC_AUDIENCE)
     except Exception as exc:  # expired, wrong audience, bad signature, ...
         raise PermissionError(f"invalid token: {exc}") from exc
 
@@ -87,18 +86,14 @@ def single_run_lock() -> Iterator[None]:
             application_name=f"{config.DB_APPLICATION_NAME}-job-lock",
             autocommit=True,
         ) as conn:
-            got = conn.execute(
-                "SELECT pg_try_advisory_lock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,)
-            ).fetchone()[0]
+            got = conn.execute("SELECT pg_try_advisory_lock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,)).fetchone()[0]
             if not got:
                 raise JobAlreadyRunning()
             try:
                 yield
             finally:
                 with contextlib.suppress(Exception):
-                    conn.execute(
-                        "SELECT pg_advisory_unlock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,)
-                    )
+                    conn.execute("SELECT pg_advisory_unlock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,))
     finally:
         _local_lock.release()
 

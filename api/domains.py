@@ -15,6 +15,7 @@ Responsibilities of this layer
   ✗ No SQL.
   ✗ No business rules.
 """
+
 from http import HTTPStatus
 
 from flask_smorest import Blueprint, abort
@@ -33,8 +34,7 @@ domains_bp = Blueprint(
     __name__,
     url_prefix="/domains",
     description=(
-        "Manage registered domains. "
-        "A domain record authorises the chat agent to serve visitors from that hostname."
+        "Manage registered domains. A domain record authorises the chat agent to serve visitors from that hostname."
     ),
 )
 
@@ -42,6 +42,7 @@ domains_bp = Blueprint(
 # ---------------------------------------------------------------------------
 # Dependency factory
 # ---------------------------------------------------------------------------
+
 
 def _get_domain_service() -> DomainService:
     """
@@ -58,11 +59,14 @@ def _get_domain_service() -> DomainService:
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @domains_bp.post("/")
 @domains_bp.arguments(CreateDomainRequest, location="json")
 @domains_bp.response(HTTPStatus.CREATED, DomainResponse)
 @domains_bp.alt_response(HTTPStatus.CONFLICT, description="A domain with that address already exists.")
-@domains_bp.alt_response(HTTPStatus.UNPROCESSABLE_ENTITY, description="The website URL cannot be parsed into a valid hostname.")
+@domains_bp.alt_response(
+    HTTPStatus.UNPROCESSABLE_ENTITY, description="The website URL cannot be parsed into a valid hostname."
+)
 def create_domain(body: dict):
     """
     Register a new domain.

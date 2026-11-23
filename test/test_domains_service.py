@@ -9,6 +9,7 @@ These tests have ZERO external dependencies:
 The ``DomainRepository`` is replaced by a ``MagicMock`` so every test is fast
 and deterministic.
 """
+
 import os
 import sys
 from unittest.mock import MagicMock
@@ -29,12 +30,13 @@ from domains.service import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def mock_repo():
     """A MagicMock that satisfies the DomainRepository interface."""
     repo = MagicMock()
-    repo.find_by_address.return_value = None   # no duplicate by default
-    repo.find_by_id.return_value = None        # no parent by default
+    repo.find_by_address.return_value = None  # no duplicate by default
+    repo.find_by_id.return_value = None  # no parent by default
     repo.create.return_value = {
         "id": 1,
         "key": "EXAMPLE_COM",
@@ -53,6 +55,7 @@ def service(mock_repo):
 # ---------------------------------------------------------------------------
 # DomainService.extract_address
 # ---------------------------------------------------------------------------
+
 
 class TestExtractAddress:
     def test_full_https_url_strips_scheme_path_and_www(self):
@@ -92,6 +95,7 @@ class TestExtractAddress:
 # DomainService.generate_key
 # ---------------------------------------------------------------------------
 
+
 class TestGenerateKey:
     def test_simple_dotcom(self):
         assert DomainService.generate_key("example.com") == "EXAMPLE_COM"
@@ -118,6 +122,7 @@ class TestGenerateKey:
 # ---------------------------------------------------------------------------
 # DomainService.add_domain – success paths
 # ---------------------------------------------------------------------------
+
 
 class TestAddDomain:
     def test_success_returns_repository_record(self, service, mock_repo):
@@ -150,6 +155,7 @@ class TestAddDomain:
 # ---------------------------------------------------------------------------
 # DomainService.add_domain – error paths
 # ---------------------------------------------------------------------------
+
 
 class TestAddDomainErrors:
     def test_duplicate_address_raises_domain_already_exists(self, service, mock_repo):

@@ -17,7 +17,7 @@ def process_conversation(user_input, session_id, request_type, domain):
     """
 
     try:
-        print(f"[PROCESSOR] Processing session {session_id} for contact info detection...")  
+        print(f"[PROCESSOR] Processing session {session_id} for contact info detection...")
         # Update request_type for the new messages in this session
         _update_session_request_type(session_id, request_type, domain)
         # Choose llm function based on request type
@@ -30,17 +30,17 @@ def process_conversation(user_input, session_id, request_type, domain):
 
         if info_data and _has_valid_info(info_data, request_type):
             print(f"[PROCESSOR] info detected in session {session_id}")
-                
+
             # Save information to database
             _save_info_to_database(session_id, info_data, user_input, request_type, domain)
             print(f"[PROCESSOR] information saved for session {session_id}.")
         else:
             print(f"[PROCESSOR] No Info detected in current message for session {session_id}")
 
-        
     except Exception as e:
         print(f"[PROCESSOR] Error in conversation processor: {e}")
         # Don't let processing errors break the chat flow
+
 
 @with_connection
 def _update_session_request_type(conn, session_id, request_type, domain):
@@ -63,7 +63,10 @@ def _update_session_request_type(conn, session_id, request_type, domain):
             cur.execute(insert_query, (session_id, request_type, domain))
 
             if cur.rowcount and cur.rowcount > 0:
-                print(f"[CREATE] Inserted new chat_info for session_id={session_id} with request_type='{request_type}'and domain ='{domain}'")
+                print(
+                    f"[CREATE] Inserted new chat_info for session_id={session_id} "
+                    f"with request_type='{request_type}' and domain='{domain}'"
+                )
             else:
                 print(f"[CREATE] session_id={session_id} already exists - no action taken")
 
@@ -75,32 +78,33 @@ def _update_session_request_type(conn, session_id, request_type, domain):
 def _has_valid_info(info_data, request_type):
     """
     Check if the extracted info contains the at least one required fields.
-    
+
     Args:
         info_data (dict): Extracted information
-        
+
     Returns:
         bool: True if required info is present
     """
     if not info_data:
         return False
-        
+
     if request_type == agent_type.SALES:
         # For sales, we need at least one of the key fields to be detected
         return any(info_data.get(f, "").strip() for f in ["contact_name", "email", "mobile", "country"])
     else:
         # For non-sales, just check contact)name
-        return info_data.get('name_detected', False) and info_data.get('contact_name', '').strip()
+        return info_data.get("name_detected", False) and info_data.get("contact_name", "").strip()
+
 
 def _detect_info_with_llm(message, request_type, domain):
     """
     Use LLM to detect if the user provided their contact info in the message.
-    
+
     Args:
         message (str): User's message to analyze
-        
+
     Returns:
-        dict: Contains Contact Us/name info 
+        dict: Contains Contact Us/name info
     """
     try:
         # Create LLM instance for contact info detection
@@ -111,9 +115,9 @@ def _detect_info_with_llm(message, request_type, domain):
             prompt_content = get_prompt(domain, request_type, "fetch-contact-info")
             prompt_content = prompt_content.replace("{message}", message)
         else:
-            prompt_content = get_prompt(domain, request_type,"fetch-name")
+            prompt_content = get_prompt(domain, request_type, "fetch-name")
             prompt_content = prompt_content.replace("{message}", message)
-        print(f"[INFO_DETECTION] Using prompt: {prompt_content}")   
+        print(f"[INFO_DETECTION] Using prompt: {prompt_content}")
         # Create the prompt
         full_prompt = [SystemMessage(content=prompt_content)]
 
@@ -121,9 +125,9 @@ def _detect_info_with_llm(message, request_type, domain):
         response = llm.invoke(full_prompt)
         response_text = response.content.strip()
         # Clean markdown fences if present
-        response_text = response_text.strip("`").replace("json\n", "")        
+        response_text = response_text.strip("`").replace("json\n", "")
         print(f"[INFO_DETECTION] LLM Response: {response_text}")
-        
+
         # Parse JSON response
         try:
             contact_info = json.loads(response_text)
@@ -131,11 +135,12 @@ def _detect_info_with_llm(message, request_type, domain):
         except json.JSONDecodeError:
             print(f"[INFO_DETECTION] Failed to parse LLM response as JSON: {response_text}")
             return {"contact_name": "", "email": "", "mobile": "", "country": ""}
-            
+
     except Exception as e:
         print(f"[INFO_DETECTION] Error in LLM contact info detection: {e}")
         return {"contact_name": "", "email": "", "mobile": "", "country": ""}
-    
+
+
 @with_connection
 def _save_info_to_database(conn, session_id, info_data, original_message, request_type, domain):
     """
@@ -148,18 +153,17 @@ def _save_info_to_database(conn, session_id, info_data, original_message, reques
         request_type: type of request
     """
     with conn.cursor() as cur:
-
         metadata = {
             "info_detected_from_message": original_message,
             "detection_method": request_type,
-            "detection_timestamp": datetime.now().isoformat()
+            "detection_timestamp": datetime.now().isoformat(),
         }
 
         # For sales requests, extract name, email, and country
-        contact_name = info_data.get('contact_name', '').strip() or None
-        email = info_data.get('email', '').strip() or None
-        country = info_data.get('country', '').strip() or None
-        mobile = info_data.get('mobile', '').strip() or None
+        contact_name = info_data.get("contact_name", "").strip() or None
+        email = info_data.get("email", "").strip() or None
+        country = info_data.get("country", "").strip() or None
+        mobile = info_data.get("mobile", "").strip() or None
 
         # Always update with new information (allow corrections)
         # Only keep existing data if new data is explicitly empty/None
@@ -202,23 +206,30 @@ def _save_info_to_database(conn, session_id, info_data, original_message, reques
             END
         """
 
-        cur.execute(insert_query, (
-            session_id,
-            contact_name,
-            email,
-            country,
-            mobile,
-            request_type,
-            domain,
-            json.dumps(metadata),
-            datetime.now()
-        ))
+        cur.execute(
+            insert_query,
+            (
+                session_id,
+                contact_name,
+                email,
+                country,
+                mobile,
+                request_type,
+                domain,
+                json.dumps(metadata),
+                datetime.now(),
+            ),
+        )
 
         # Log what was updated
         updates = []
-        if contact_name: updates.append(f"contact_name='{contact_name}'")
-        if email: updates.append(f"email='{email}'")
-        if country: updates.append(f"country='{country}'")
-        if mobile: updates.append(f"mobile='{mobile}'")
+        if contact_name:
+            updates.append(f"contact_name='{contact_name}'")
+        if email:
+            updates.append(f"email='{email}'")
+        if country:
+            updates.append(f"country='{country}'")
+        if mobile:
+            updates.append(f"mobile='{mobile}'")
 
         print(f"[DATABASE] Info updated for session {session_id}: {', '.join(updates) if updates else 'no new info'}")

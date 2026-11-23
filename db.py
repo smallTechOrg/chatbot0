@@ -2,6 +2,7 @@
 Database bootstrap: make the database and its tables if they do not exist.
 Connections come from the pool in db_pool.
 """
+
 import threading
 import time
 import traceback
@@ -24,7 +25,7 @@ def ensure_database_exists(database_url=config.DATABASE_URL, database=config.db_
     This one cannot use the pool: the pool targets the application database,
     which may not exist yet.
     """
-    base_url = database_url.rsplit('/', 1)[0]
+    base_url = database_url.rsplit("/", 1)[0]
     postgres_url = f"{base_url}/postgres"
 
     with psycopg.connect(postgres_url, connect_timeout=config.DB_CONNECT_TIMEOUT) as temp_conn:
@@ -270,9 +271,7 @@ def _bootstrap_loop(limit=config.DB_BOOTSTRAP_ATTEMPTS):
         time.sleep(delay)
         delay = min(delay * 2, config.DB_RETRY_MAX_DELAY)
 
-    print(
-        f"Giving up on schema bootstrap after {limit} attempts. The app stays up."
-    )
+    print(f"Giving up on schema bootstrap after {limit} attempts. The app stays up.")
 
 
 def init_db(wait=config.DB_STARTUP_WAIT):
@@ -284,9 +283,7 @@ def init_db(wait=config.DB_STARTUP_WAIT):
 
     with _bootstrap_lock:
         if _bootstrap_thread is None:
-            _bootstrap_thread = threading.Thread(
-                target=_bootstrap_loop, name="db-bootstrap", daemon=True
-            )
+            _bootstrap_thread = threading.Thread(target=_bootstrap_loop, name="db-bootstrap", daemon=True)
             _bootstrap_thread.start()
 
     _bootstrap_thread.join(timeout=wait)

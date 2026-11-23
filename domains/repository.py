@@ -2,6 +2,7 @@
 Data access for the Domains resource. All SQL is here. Each method takes a
 connection from the pool for one query. The repository keeps no connection.
 """
+
 from __future__ import annotations
 
 from db_pool import run_with_retry
@@ -23,8 +24,7 @@ class DomainRepository:
         def query(conn):
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, key, address, parent, created_at "
-                    "FROM domains WHERE address = %s;",
+                    "SELECT id, key, address, parent, created_at FROM domains WHERE address = %s;",
                     (address,),
                 )
                 return cur.fetchone()
@@ -38,8 +38,7 @@ class DomainRepository:
         def query(conn):
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, key, address, parent, created_at "
-                    "FROM domains WHERE id = %s;",
+                    "SELECT id, key, address, parent, created_at FROM domains WHERE id = %s;",
                     (domain_id,),
                 )
                 return cur.fetchone()
@@ -52,10 +51,7 @@ class DomainRepository:
 
         def query(conn):
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT id, key, address, parent, created_at "
-                    "FROM domains ORDER BY created_at ASC;"
-                )
+                cur.execute("SELECT id, key, address, parent, created_at FROM domains ORDER BY created_at ASC;")
                 return cur.fetchall()
 
         return [self._to_dict(row) for row in run_with_retry(query, label="DomainRepository.list_all")]
@@ -92,9 +88,7 @@ class DomainRepository:
                 )
                 return cur.fetchone()
 
-        return self._to_dict(
-            run_with_retry(insert, attempts=1, label="DomainRepository.create")
-        )
+        return self._to_dict(run_with_retry(insert, attempts=1, label="DomainRepository.create"))
 
     # ------------------------------------------------------------------
     # Helpers
@@ -108,6 +102,6 @@ class DomainRepository:
             "id": id_,
             "key": key,
             "address": address,
-            "parent_id": parent,    # alias: DB column is "parent"
+            "parent_id": parent,  # alias: DB column is "parent"
             "created_at": created_at,
         }

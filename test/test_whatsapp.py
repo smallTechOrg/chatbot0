@@ -3,6 +3,7 @@ WhatsApp: per-connection webhook (handshake, signature), payload handling,
 the reply path, failure handling, and markdown conversion. The LLM and the
 Graph API are stubbed; connections live in the test database.
 """
+
 import hashlib
 import hmac
 import json
@@ -51,8 +52,10 @@ def _sql(query, params=()):
 def connection():
     """A connection on a fresh phone_number_id, mapped to a test domain."""
     pnid = str(uuid.uuid4().int)[:16]
-    _sql("INSERT INTO domains (key, address) VALUES (%s, %s) ON CONFLICT (address) DO NOTHING;",
-         (DOMAIN, "watest.example"))
+    _sql(
+        "INSERT INTO domains (key, address) VALUES (%s, %s) ON CONFLICT (address) DO NOTHING;",
+        (DOMAIN, "watest.example"),
+    )
     row = repository.create_connection(pnid, DOMAIN, TOKEN, APP_SECRET)
     yield row
     _sql("DELETE FROM whatsapp_connections WHERE id = %s;", (row["id"],))
@@ -62,8 +65,9 @@ def connection():
 @pytest.fixture
 def stubs(monkeypatch):
     log = {"sent": [], "llm": [], "alerts": [], "send_result": GraphResult(True, {})}
-    monkeypatch.setattr(service, "get_groq_response",
-                        lambda *a: log["llm"].append(a) or "## Hello\n**Welcome** to *Acme*")
+    monkeypatch.setattr(
+        service, "get_groq_response", lambda *a: log["llm"].append(a) or "## Hello\n**Welcome** to *Acme*"
+    )
 
     def fake_send(pnid, token, to, body):
         log["sent"].append((pnid, token, to, body))
@@ -78,25 +82,42 @@ def payload(pnid, text="Hi there", msg_id=None, msg_type="text"):
     msg = {"from": WA_ID, "id": msg_id or f"wamid.{uuid.uuid4().hex}", "type": msg_type}
     if msg_type == "text":
         msg["text"] = {"body": text}
-    return {"object": "whatsapp_business_account", "entry": [{"changes": [{"field": "messages", "value": {
-        "metadata": {"phone_number_id": pnid},
-        "contacts": [{"wa_id": WA_ID, "profile": {"name": "Asha"}}],
-        "messages": [msg],
-    }}]}]}
+    return {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "field": "messages",
+                        "value": {
+                            "metadata": {"phone_number_id": pnid},
+                            "contacts": [{"wa_id": WA_ID, "profile": {"name": "Asha"}}],
+                            "messages": [msg],
+                        },
+                    }
+                ]
+            }
+        ],
+    }
 
 
 def post(client, connection, body, secret=APP_SECRET):
     raw = json.dumps(body).encode()
     sig = "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
-    return client.post(f"/whatsapp/webhook/{connection['id']}", data=raw,
-                       headers={"X-Hub-Signature-256": sig, "Content-Type": "application/json"})
+    return client.post(
+        f"/whatsapp/webhook/{connection['id']}",
+        data=raw,
+        headers={"X-Hub-Signature-256": sig, "Content-Type": "application/json"},
+    )
 
 
 # -- storage ------------------------------------------------------------------
 
+
 def test_credentials_are_stored_encrypted(connection):
-    stored = _sql("SELECT access_token_enc, app_secret_enc FROM whatsapp_connections WHERE id = %s;",
-                  (connection["id"],))[0]
+    stored = _sql(
+        "SELECT access_token_enc, app_secret_enc FROM whatsapp_connections WHERE id = %s;", (connection["id"],)
+    )[0]
     assert TOKEN not in stored[0] and APP_SECRET not in stored[1]
     assert "access_token_enc" not in connection and "access_token" not in connection
     full = repository.get_connection_with_credentials(connection["id"])
@@ -118,9 +139,12 @@ def test_signature_check():
 
 # -- handshake and signature on the route -------------------------------------
 
+
 def test_handshake_echoes_challenge(client, connection):
-    r = client.get(f"/whatsapp/webhook/{connection['id']}", query_string={
-        "hub.mode": "subscribe", "hub.verify_token": connection["verify_token"], "hub.challenge": "8812"})
+    r = client.get(
+        f"/whatsapp/webhook/{connection['id']}",
+        query_string={"hub.mode": "subscribe", "hub.verify_token": connection["verify_token"], "hub.challenge": "8812"},
+    )
     assert (r.status_code, r.get_data(as_text=True)) == (200, "8812")
 
 
@@ -142,6 +166,7 @@ def test_post_is_refused_without_secret_key(client, connection, stubs, monkeypat
 
 
 # -- the reply path -----------------------------------------------------------
+
 
 def test_text_message_gets_a_formatted_reply_and_a_whatsapp_lead(client, connection, stubs):
     pnid = connection["phone_number_id"]
@@ -173,8 +198,19 @@ def test_media_gets_the_text_only_notice(client, connection, stubs):
 def test_reactions_and_read_receipts_are_ignored(client, connection, stubs):
     pnid = connection["phone_number_id"]
     post(client, connection, payload(pnid, msg_type="reaction"))
-    receipt = {"object": "whatsapp_business_account", "entry": [{"changes": [{"field": "messages", "value": {
-        "metadata": {"phone_number_id": pnid}, "statuses": [{"id": "x", "status": "read"}]}}]}]}
+    receipt = {
+        "object": "whatsapp_business_account",
+        "entry": [
+            {
+                "changes": [
+                    {
+                        "field": "messages",
+                        "value": {"metadata": {"phone_number_id": pnid}, "statuses": [{"id": "x", "status": "read"}]},
+                    }
+                ]
+            }
+        ],
+    }
     assert post(client, connection, receipt).status_code == 200
     assert stubs["sent"] == [] and stubs["llm"] == []
 
@@ -218,19 +254,23 @@ def test_changed_secret_key_makes_tokens_unreadable(connection, monkeypatch):
 
 # -- formatting ---------------------------------------------------------------
 
-@pytest.mark.parametrize("md, expected", [
-    ("**bold**", "*bold*"),
-    ("*italic*", "_italic_"),
-    ("**bold** and *italic*", "*bold* and _italic_"),
-    ("## Heading\ntext", "*Heading*\ntext"),
-    ("* one\n* two", "- one\n- two"),
-    ("- one\n- two", "- one\n- two"),
-    ("[Acme](https://acme.com)", "Acme (https://acme.com)"),
-    ("2 * 3 * 4", "2 * 3 * 4"),
-    ("```\n**keep**\n```", "```\n**keep**\n```"),
-    ("a\n\n\n\nb", "a\n\nb"),
-    ("---\ntext", "text"),
-])
+
+@pytest.mark.parametrize(
+    "md, expected",
+    [
+        ("**bold**", "*bold*"),
+        ("*italic*", "_italic_"),
+        ("**bold** and *italic*", "*bold* and _italic_"),
+        ("## Heading\ntext", "*Heading*\ntext"),
+        ("* one\n* two", "- one\n- two"),
+        ("- one\n- two", "- one\n- two"),
+        ("[Acme](https://acme.com)", "Acme (https://acme.com)"),
+        ("2 * 3 * 4", "2 * 3 * 4"),
+        ("```\n**keep**\n```", "```\n**keep**\n```"),
+        ("a\n\n\n\nb", "a\n\nb"),
+        ("---\ntext", "text"),
+    ],
+)
 def test_to_whatsapp(md, expected):
     assert to_whatsapp(md) == expected
 

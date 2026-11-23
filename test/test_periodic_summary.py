@@ -2,6 +2,7 @@
 Tests for the periodic summary chain against the real schema.
 The LLM call is stubbed, so no Groq key is needed.
 """
+
 import os
 import sys
 import uuid
@@ -21,8 +22,7 @@ import db_pool
 def _insert_message(session_id, age, msg_type="human", content="hi"):
     """Write one chat_table row whose created_at is *age* ago."""
     query = sql.SQL(
-        "INSERT INTO {table} (session_id, message, created_at) "
-        "VALUES (%s, %s::jsonb, NOW() - %s::interval);"
+        "INSERT INTO {table} (session_id, message, created_at) VALUES (%s, %s::jsonb, NOW() - %s::interval);"
     ).format(table=sql.Identifier(config.table_name))
     message = '{"type": "%s", "data": {"content": "%s", "type": "%s"}}' % (msg_type, content, msg_type)
     with db_pool.get_connection() as conn:
@@ -191,8 +191,7 @@ class TestFindChatsNeedingSummary:
         with db_pool.get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "UPDATE chat_info SET contact_name = %s, email = %s, domain = %s "
-                    "WHERE session_id = %s;",
+                    "UPDATE chat_info SET contact_name = %s, email = %s, domain = %s WHERE session_id = %s;",
                     ("Ada", "ada@example.com", config.DEFAULT_DOMAIN, recent),
                 )
 
@@ -449,8 +448,9 @@ class TestPeriodicSummary:
         _insert_message(silent, timedelta(minutes=5), msg_type="ai", content="Welcome!")
         _insert_chat_info(silent)
         # Slack has nothing to send for this run, so it reports a skip.
-        monkeypatch.setattr(periodic_summary, "send_summaries_to_slack",
-                            lambda result: {"sent": 0, "skipped": "nothing to report"})
+        monkeypatch.setattr(
+            periodic_summary, "send_summaries_to_slack", lambda result: {"sent": 0, "skipped": "nothing to report"}
+        )
         try:
             result = periodic_summary.periodic_summary()
 
@@ -554,8 +554,9 @@ class TestExtractLlmErrorReason:
         llm_calls = len(fake_llm)
 
         # Slack is back. The saved summary goes out; the LLM is not asked again.
-        monkeypatch.setattr(periodic_summary, "send_summaries_to_slack",
-                            lambda result: fake_slack.append(result) or {"sent": 1})
+        monkeypatch.setattr(
+            periodic_summary, "send_summaries_to_slack", lambda result: fake_slack.append(result) or {"sent": 1}
+        )
         second = periodic_summary.periodic_summary()
 
         assert len(fake_llm) == llm_calls
@@ -576,8 +577,11 @@ class TestExtractLlmErrorReason:
     def test_nothing_to_send_marks_nothing(self, sessions, fake_llm, monkeypatch):
         import periodic_summary
 
-        monkeypatch.setattr(periodic_summary, "send_summaries_to_slack",
-                            lambda result: {"sent": 0, "skipped": "SLACK_WEBHOOK_URL not set"})
+        monkeypatch.setattr(
+            periodic_summary,
+            "send_summaries_to_slack",
+            lambda result: {"sent": 0, "skipped": "SLACK_WEBHOOK_URL not set"},
+        )
         result = periodic_summary.periodic_summary()
 
         assert result["notified_count"] == 0

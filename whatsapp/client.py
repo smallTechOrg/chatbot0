@@ -5,6 +5,7 @@ each tenant brings their own Meta app.
 
 Nothing here logs or returns an access token or app secret.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -40,15 +41,18 @@ def signature_is_valid(raw_body: bytes, header: str | None, app_secret: str) -> 
     if not app_secret or not header or not header.startswith("sha256="):
         return False
     expected = hmac.new(app_secret.encode(), raw_body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(expected, header[len("sha256="):])
+    return hmac.compare_digest(expected, header[len("sha256=") :])
 
 
 def _call(method: str, path: str, token: str, **kwargs) -> GraphResult:
     url = GRAPH.format(version=config.WHATSAPP_GRAPH_VERSION, path=path)
     try:
         resp = requests.request(
-            method, url, headers={"Authorization": f"Bearer {token}"},
-            timeout=config.WHATSAPP_TIMEOUT, **kwargs,
+            method,
+            url,
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=config.WHATSAPP_TIMEOUT,
+            **kwargs,
         )
     except requests.RequestException as exc:
         return GraphResult(False, error=f"network error: {type(exc).__name__}")
@@ -66,13 +70,18 @@ def _call(method: str, path: str, token: str, **kwargs) -> GraphResult:
 
 def send_text(phone_number_id: str, token: str, to: str, body: str) -> GraphResult:
     """Send one text message from the business number to *to* (the user's wa_id)."""
-    return _call("POST", f"{phone_number_id}/messages", token, json={
-        "messaging_product": "whatsapp",
-        "recipient_type": "individual",
-        "to": to,
-        "type": "text",
-        "text": {"preview_url": False, "body": body},
-    })
+    return _call(
+        "POST",
+        f"{phone_number_id}/messages",
+        token,
+        json={
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to,
+            "type": "text",
+            "text": {"preview_url": False, "body": body},
+        },
+    )
 
 
 def check_number(phone_number_id: str, token: str) -> GraphResult:

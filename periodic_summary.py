@@ -3,6 +3,7 @@ Periodic summary of chat activity: find chats that need a summary, summarise
 each with the LLM, save it on chat_info (summary, summary_generated_at,
 summary_notified_at), and post to Slack, resending until Slack has it.
 """
+
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -50,8 +51,10 @@ def periodic_summary() -> dict[str, Any]:
         session_id = session["session_id"]
         try:
             session["conversation"] = fetch_full_conversation_history(session_id)
-            print(f"[PERIODIC_SUMMARY] session {session_id}: "
-                  f"{len(session['conversation'])} message(s) in full conversation")
+            print(
+                f"[PERIODIC_SUMMARY] session {session_id}: "
+                f"{len(session['conversation'])} message(s) in full conversation"
+            )
 
             if is_silent(session["conversation"]):
                 session["silent"] = True
@@ -170,6 +173,7 @@ def find_chats_needing_summary(conn, window: timedelta = SUMMARY_WINDOW) -> list
         cur.execute(query, {"window": window})
         return cur.fetchall()
 
+
 @with_connection
 def fetch_full_conversation_history(conn, session_id: str) -> list[dict[str, str]]:
     """
@@ -189,6 +193,7 @@ def fetch_full_conversation_history(conn, session_id: str) -> list[dict[str, str
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(query, {"session_id": session_id})
         return cur.fetchall()
+
 
 def _format_conversation_transcript(conversation: list[dict[str, str]]) -> str:
     """Render the messages as 'Visitor: ...' / 'Agent: ...' lines."""

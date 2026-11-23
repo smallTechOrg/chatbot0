@@ -11,29 +11,109 @@ value is kept.
 
 from __future__ import annotations
 
+import itertools
 import re
 
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+'-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$")
 
 # Local parts and domains people type when they do not want to give an email.
-_PLACEHOLDER_WORDS = frozenset({
-    "test", "testing", "tester", "abc", "abcd", "xyz", "asdf", "asdfg", "qwerty", "qwertyuiop",
-    "aaa", "aaaa", "fake", "dummy", "sample", "none", "no", "nope", "null", "na", "n/a",
-    "example", "email", "mail", "user", "username", "guest", "anonymous", "anon", "nobody",
-    "someone", "foo", "bar", "baz", "blah", "temp", "demo", "unknown", "notgiven", "noemail",
-})
-_PLACEHOLDER_DOMAINS = frozenset({
-    "example.com", "example.org", "example.net", "test.com", "test.in", "abc.com", "xyz.com",
-    "email.com", "mail.com", "domain.com", "company.com", "website.com", "site.com", "fake.com",
-    "asdf.com", "qwerty.com", "aaa.com", "a.com", "b.com", "x.com", "mailinator.com",
-    "guerrillamail.com", "10minutemail.com", "yopmail.com", "tempmail.com", "temp-mail.org",
-    "sharklasers.com", "trashmail.com", "dispostable.com", "getnada.com", "throwawaymail.com",
-})
+_PLACEHOLDER_WORDS = frozenset(
+    {
+        "test",
+        "testing",
+        "tester",
+        "abc",
+        "abcd",
+        "xyz",
+        "asdf",
+        "asdfg",
+        "qwerty",
+        "qwertyuiop",
+        "aaa",
+        "aaaa",
+        "fake",
+        "dummy",
+        "sample",
+        "none",
+        "no",
+        "nope",
+        "null",
+        "na",
+        "n/a",
+        "example",
+        "email",
+        "mail",
+        "user",
+        "username",
+        "guest",
+        "anonymous",
+        "anon",
+        "nobody",
+        "someone",
+        "foo",
+        "bar",
+        "baz",
+        "blah",
+        "temp",
+        "demo",
+        "unknown",
+        "notgiven",
+        "noemail",
+    }
+)
+_PLACEHOLDER_DOMAINS = frozenset(
+    {
+        "example.com",
+        "example.org",
+        "example.net",
+        "test.com",
+        "test.in",
+        "abc.com",
+        "xyz.com",
+        "email.com",
+        "mail.com",
+        "domain.com",
+        "company.com",
+        "website.com",
+        "site.com",
+        "fake.com",
+        "asdf.com",
+        "qwerty.com",
+        "aaa.com",
+        "a.com",
+        "b.com",
+        "x.com",
+        "mailinator.com",
+        "guerrillamail.com",
+        "10minutemail.com",
+        "yopmail.com",
+        "tempmail.com",
+        "temp-mail.org",
+        "sharklasers.com",
+        "trashmail.com",
+        "dispostable.com",
+        "getnada.com",
+        "throwawaymail.com",
+    }
+)
 
 # Names people type instead of a name.
-_PLACEHOLDER_NAMES = frozenset(_PLACEHOLDER_WORDS | {
-    "me", "you", "name", "my name", "your name", "customer", "visitor", "person", "human", "bot", "admin",
-})
+_PLACEHOLDER_NAMES = frozenset(
+    _PLACEHOLDER_WORDS
+    | {
+        "me",
+        "you",
+        "name",
+        "my name",
+        "your name",
+        "customer",
+        "visitor",
+        "person",
+        "human",
+        "bot",
+        "admin",
+    }
+)
 
 _INDIA_HINTS = ("india", "bharat", "in")
 
@@ -84,7 +164,7 @@ def _is_sequence(digits: str) -> bool:
     """True when every digit is one more (or one less) than the previous: 1234567890, 9876543210."""
     if len(digits) < 6:
         return False
-    steps = {(int(b) - int(a)) % 10 for a, b in zip(digits, digits[1:])}
+    steps = {(int(b) - int(a)) % 10 for a, b in itertools.pairwise(digits)}
     return steps in ({1}, {9})
 
 

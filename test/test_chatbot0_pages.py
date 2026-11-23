@@ -60,8 +60,14 @@ def test_robots_and_sitemap(client):
 
 @pytest.mark.parametrize(
     "asset",
-    ["css/chatbot0.css", "img/icon.svg", "img/favicon.ico", "img/apple-icon.png",
-     "img/logo-smalltech.svg", "img/og-chatbot0.png"],
+    [
+        "css/chatbot0.css",
+        "img/icon.svg",
+        "img/favicon.ico",
+        "img/apple-icon.png",
+        "img/logo-smalltech.svg",
+        "img/og-chatbot0.png",
+    ],
 )
 def test_static_assets_served(client, asset):
     assert client.get(f"/chatbot0/static/{asset}").status_code == 200
@@ -123,10 +129,13 @@ def test_pages_load_the_shared_analytics_script(client):
     body = script.get_data(as_text=True)
     assert "G-YTYS0G2P7L" in body and '"chatbot0.smalltech.in": "chatbot0"' in body
     # Plan buttons say which plan was picked.
-    assert 'data-ga-event="plan_click" data-ga-plan="free"' in client.get("/pricing", headers=HOST).get_data(as_text=True)
+    assert 'data-ga-event="plan_click" data-ga-plan="free"' in client.get("/pricing", headers=HOST).get_data(
+        as_text=True
+    )
 
 
 # ---------------------------------------------------------------- pages ported from zer0.smalltech.in
+
 
 @pytest.mark.parametrize("path", PAGES)
 @pytest.mark.parametrize("host", [None, "chatbot0.smalltech.in"])
@@ -140,11 +149,13 @@ def test_no_small_business_wording(client, path, host):
 
 @pytest.mark.parametrize(
     "path,title",
-    [("/sales", "AI sales agent for your website, chatbot0"),
-     ("/support", "AI customer support agent for your website, chatbot0"),
-     ("/industries", "chatbot0 for your industry"),
-     ("/about", "About chatbot0, by smallTech"),
-     ("/signup", "Sign up free, chatbot0")],
+    [
+        ("/sales", "AI sales agent for your website, chatbot0"),
+        ("/support", "AI customer support agent for your website, chatbot0"),
+        ("/industries", "chatbot0 for your industry"),
+        ("/about", "About chatbot0, by smallTech"),
+        ("/signup", "Sign up free, chatbot0"),
+    ],
 )
 def test_new_pages_seo(client, path, title):
     html = client.get("/chatbot0" + path).get_data(as_text=True)
@@ -190,7 +201,7 @@ def test_signup_script_calls_the_api_like_the_old_sign_up_page(client):
         order = [js.index('jsonPost("/domains/", "POST"'), js.index('jsonPost("/prompt", "POST"')]
         assert order == sorted(order)
         assert "/chat-info/contact" not in js
-        assert 'website_url: website, contact_name: name' in js
+        assert "website_url: website, contact_name: name" in js
         assert "domainBody.email = " in js and "domainBody.mobile = " in js
         assert "domainRes.status === 409" in js
         assert 'agent_type: "sales"' in js and 'type: "company"' in js
@@ -208,8 +219,15 @@ def test_chatbot0_host_passes_signup_api_calls_through(client, path):
     assert on_host.mimetype != "text/html"
 
 
-@pytest.mark.parametrize("value,slug", [("E-Commerce", "e-commerce"), ("IT Support", "it-support"),
-                                        ("real estate", "real-estate"), ("enterprises", "enterprises")])
+@pytest.mark.parametrize(
+    "value,slug",
+    [
+        ("E-Commerce", "e-commerce"),
+        ("IT Support", "it-support"),
+        ("real estate", "real-estate"),
+        ("enterprises", "enterprises"),
+    ],
+)
 def test_old_industry_links_land_on_their_entry(client, value, slug):
     for url, headers in (("/chatbot0/industries", {}), ("/industries", HOST)):
         html = client.get(url, query_string={"industry": value}, headers=headers).get_data(as_text=True)
@@ -225,7 +243,9 @@ def test_industries_lists_every_industry_and_drops_small_business(client):
         assert f'id="{industry.slug}"' in html and industry.feature in html
     assert "pub-card--current" not in html
     assert content.find_industry("Small Business") is None
-    assert "pub-card--current" not in client.get("/chatbot0/industries?industry=Small%20Business").get_data(as_text=True)
+    assert "pub-card--current" not in client.get("/chatbot0/industries?industry=Small%20Business").get_data(
+        as_text=True
+    )
 
 
 def test_about_links_to_smalltech_and_zer0(client):

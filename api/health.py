@@ -1,3 +1,5 @@
+import contextlib
+
 from flask import Blueprint, jsonify
 
 import config
@@ -31,9 +33,7 @@ def health():
         status["database_error"] = str(e)
         code = 503
 
-    try:
+    with contextlib.suppress(Exception):  # the pool could not even be built
         status["pool"] = get_pool().get_stats()
-    except Exception:  # the pool could not even be built
-        pass
 
     return jsonify(status), code

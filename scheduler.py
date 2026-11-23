@@ -2,6 +2,7 @@
 Background scheduler that runs periodic_summary() in a thread of the Flask process,
 on config.PERIODIC_SUMMARY_CRON in config.PERIODIC_SUMMARY_TIMEZONE.
 """
+
 import atexit
 import threading
 import traceback
@@ -32,9 +33,7 @@ def start_scheduler() -> BackgroundScheduler:
         scheduler = BackgroundScheduler(daemon=True)
         scheduler.add_job(
             run_periodic_summary_job,
-            trigger=CronTrigger.from_crontab(
-                config.PERIODIC_SUMMARY_CRON, timezone=config.PERIODIC_SUMMARY_TIMEZONE
-            ),
+            trigger=CronTrigger.from_crontab(config.PERIODIC_SUMMARY_CRON, timezone=config.PERIODIC_SUMMARY_TIMEZONE),
             id=JOB_ID,
             name="Periodic chat summary",
             # A run that is still going when the next one is due: skip the new

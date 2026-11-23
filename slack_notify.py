@@ -3,6 +3,7 @@ Post the periodic chat summary to Slack through an incoming webhook.
 One line per conversation ("7th Oct, 4:13 pm - SMALLTECH - Anjali - summary"); LLM failures
 become one sentence at the end, and silent sessions are left out.
 """
+
 from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -90,7 +91,7 @@ def _payload(lines: list[str]) -> dict[str, Any]:
     return {"username": SENDER, "text": "\n".join(lines)}
 
 
-def post_to_slack(payload: dict[str, Any], webhook_url: str = None) -> None:
+def post_to_slack(payload: dict[str, Any], webhook_url: str | None = None) -> None:
     """POST one payload to the webhook. Raises on a non-2xx answer."""
     url = webhook_url or config.SLACK_WEBHOOK_URL
     response = requests.post(url, json=payload, timeout=config.SLACK_TIMEOUT)
@@ -125,8 +126,10 @@ def notify_whatsapp_problem(connection: dict[str, Any], error: str) -> bool:
         print("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the WhatsApp alert.")
         return False
     number = connection.get("display_number") or connection.get("phone_number_id")
-    text = (f"*WhatsApp needs attention:* {_escape(str(connection.get('domain_key', '')).upper())} "
-            f"({_escape(str(number))}) - {_escape(_clip(error, 300))}")
+    text = (
+        f"*WhatsApp needs attention:* {_escape(str(connection.get('domain_key', '')).upper())} "
+        f"({_escape(str(number))}) - {_escape(_clip(error, 300))}"
+    )
     label = config.environment_label()
     try:
         post_to_slack({"username": SENDER, "text": f"*[{label}]* {text}" if label else text})
@@ -237,10 +240,7 @@ def _clock(value: datetime) -> str:
 
 
 def _ordinal(day: int) -> str:
-    if 11 <= day % 100 <= 13:
-        suffix = "th"
-    else:
-        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    suffix = "th" if 11 <= day % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
     return f"{day}{suffix}"
 
 

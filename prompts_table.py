@@ -23,6 +23,7 @@ def load_json(path: Path):
         print(f"Failed to load file {path}: {e}")
         return None
 
+
 def check_and_insert_default_prompts(sync_connection):
     """
     Check if the prompts table is empty, and insert default rows only if empty.
@@ -41,16 +42,15 @@ def check_and_insert_default_prompts(sync_connection):
         print("Prompts table is empty. Inserting default prompts...")
 
         default_prompts = [
-            (DEFAULT_DOMAIN, 'generic', 'fetch-name', Path("prompts/name_prompt.txt")),
-            (DEFAULT_DOMAIN, 'sales', 'fetch-contact-info',  Path("prompts/info_prompt.txt")),
-            (DEFAULT_DOMAIN, 'sales', 'base-prompt', Path("prompts/sales_prompt.txt")),
-            (DEFAULT_DOMAIN, 'sales', 'company', Path("prompts/company.txt")),
-            (DEFAULT_DOMAIN, 'sales', 'intro-message', Path("prompts/intro_message.txt")),
-            (DEFAULT_DOMAIN, 'generic', 'system', Path("prompts/generic_prompt.txt")),
+            (DEFAULT_DOMAIN, "generic", "fetch-name", Path("prompts/name_prompt.txt")),
+            (DEFAULT_DOMAIN, "sales", "fetch-contact-info", Path("prompts/info_prompt.txt")),
+            (DEFAULT_DOMAIN, "sales", "base-prompt", Path("prompts/sales_prompt.txt")),
+            (DEFAULT_DOMAIN, "sales", "company", Path("prompts/company.txt")),
+            (DEFAULT_DOMAIN, "sales", "intro-message", Path("prompts/intro_message.txt")),
+            (DEFAULT_DOMAIN, "generic", "system", Path("prompts/generic_prompt.txt")),
         ]
 
         for domain, agent_type, prompt_type, text in default_prompts:
-
             # If text is a file path -> load JSON
             if isinstance(text, Path):
                 text_json = load_json(text)
@@ -63,11 +63,14 @@ def check_and_insert_default_prompts(sync_connection):
 
             # ON CONFLICT: the COUNT above is not a lock. Two processes can
             # both read an empty table and both insert.
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO prompts (domain, agent_type, type, text)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (domain, agent_type, type) DO NOTHING;
-            """, (domain, agent_type, prompt_type, text_to_insert))
+            """,
+                (domain, agent_type, prompt_type, text_to_insert),
+            )
 
         print("Default prompts inserted successfully.")
 
@@ -92,6 +95,7 @@ def check_and_insert_default_domains(sync_connection):
         cur.execute(create_table_sql)
         sync_connection.commit()
 
+
 # --- New prompt API helpers ---
 @with_connection
 def get_all_prompts(conn):
@@ -103,7 +107,7 @@ def get_all_prompts(conn):
         cur.execute("SELECT id, domain, agent_type, type, text, created_at FROM prompts;")
         rows = cur.fetchall()
         columns = [desc[0] for desc in cur.description]
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(zip(columns, row, strict=False)) for row in rows]
 
 
 @with_connection
@@ -120,6 +124,6 @@ def upsert_prompt(conn, domain, agent_type, prompt_type, text):
             ON CONFLICT (domain, agent_type, type)
             DO UPDATE SET text = EXCLUDED.text, created_at = CURRENT_TIMESTAMP;
             """,
-            (domain, agent_type, prompt_type, text)
+            (domain, agent_type, prompt_type, text),
         )
         return True

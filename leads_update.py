@@ -2,7 +2,14 @@ from db_pool import with_connection
 
 
 @with_connection
-def update_contact_info(conn, session_id: str, name: str = None, email: str = None, mobile: str = None, country: str = None):
+def update_contact_info(
+    conn,
+    session_id: str,
+    name: str | None = None,
+    email: str | None = None,
+    mobile: str | None = None,
+    country: str | None = None,
+):
     """Update the contact details for a session in chat_info."""
     try:
         with conn.cursor() as cur:
@@ -23,12 +30,17 @@ def update_contact_info(conn, session_id: str, name: str = None, email: str = No
             updated_row = cur.fetchone()
 
             updates = []
-            if name:    updates.append(f"name='{name}'")
-            if email:   updates.append(f"email='{email}'")
-            if mobile:  updates.append(f"mobile='{mobile}'")
-            if country: updates.append(f"country='{country}'")
+            if name:
+                updates.append(f"name='{name}'")
+            if email:
+                updates.append(f"email='{email}'")
+            if mobile:
+                updates.append(f"mobile='{mobile}'")
+            if country:
+                updates.append(f"country='{country}'")
 
-            print(f"[DATABASE] Contact updated for session {session_id}: {', '.join(updates) if updates else 'no new info'}")
+            changed = ", ".join(updates) if updates else "no new info"
+            print(f"[DATABASE] Contact updated for session {session_id}: {changed}")
             return bool(updated_row)
 
     except Exception as e:
@@ -37,7 +49,13 @@ def update_contact_info(conn, session_id: str, name: str = None, email: str = No
 
 
 @with_connection
-def update_chat_info(conn, session_id: str, status: str = None, remarks: str = None, is_active: bool = None):
+def update_chat_info(
+    conn,
+    session_id: str,
+    status: str | None = None,
+    remarks: str | None = None,
+    is_active: bool | None = None,
+):
     """
     Insert or update a row in chat_info and return the updated row.
     """
@@ -53,22 +71,22 @@ def update_chat_info(conn, session_id: str, status: str = None, remarks: str = N
                 RETURNING *;
             """
 
-            cur.execute(update_query, (
-                status,
-                remarks,
-                is_active,
-                session_id
-            ))
+            cur.execute(update_query, (status, remarks, is_active, session_id))
 
             updated_row = cur.fetchone()
 
             # Log what was updated
             updates = []
-            if status: updates.append(f"status='{status}'")
-            if remarks: updates.append(f"remarks='{remarks}'")
-            if is_active is not None: updates.append(f"is_active={1 if is_active else 0}")
+            if status:
+                updates.append(f"status='{status}'")
+            if remarks:
+                updates.append(f"remarks='{remarks}'")
+            if is_active is not None:
+                updates.append(f"is_active={1 if is_active else 0}")
 
-            print(f"[DATABASE] Info updated for session {session_id}: {', '.join(updates) if updates else 'no new info'}")
+            print(
+                f"[DATABASE] Info updated for session {session_id}: {', '.join(updates) if updates else 'no new info'}"
+            )
             return bool(updated_row)
 
     except Exception as e:

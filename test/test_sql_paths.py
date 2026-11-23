@@ -11,6 +11,7 @@ each one once, so a column that does not exist fails here instead of in
 production. They assert on the results only lightly; the point is that the SQL
 executes and touches the columns it claims to.
 """
+
 import os
 import sys
 import uuid
@@ -36,8 +37,7 @@ def lead():
     with db_pool.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO chat_info (session_id) VALUES (%s) "
-                "ON CONFLICT (session_id) DO NOTHING;",
+                "INSERT INTO chat_info (session_id) VALUES (%s) ON CONFLICT (session_id) DO NOTHING;",
                 (session_id,),
             )
     yield session_id
@@ -71,6 +71,7 @@ def row_for(session_id):
 # Reads and writes on chat_info
 # ---------------------------------------------------------------------------
 
+
 class TestChatInfoPaths:
     def test_select_all_leads(self):
         from leads import get_all_chat_info
@@ -86,9 +87,9 @@ class TestChatInfoPaths:
             return any(r["session_id"] == lead for r in get_all_chat_info()[0])
 
         def add(msg_type):
-            query = sql.SQL(
-                "INSERT INTO {table} (session_id, message) VALUES (%s, %s::jsonb);"
-            ).format(table=sql.Identifier(config.table_name))
+            query = sql.SQL("INSERT INTO {table} (session_id, message) VALUES (%s, %s::jsonb);").format(
+                table=sql.Identifier(config.table_name)
+            )
             message = '{"type": "%s", "data": {"content": "hi", "type": "%s"}}' % (msg_type, msg_type)
             with db_pool.get_connection() as conn:
                 with conn.cursor() as cur:
@@ -104,12 +105,18 @@ class TestChatInfoPaths:
         from leads_update import update_contact_info
 
         assert update_contact_info(
-            lead, name="Ada", email="ada@example.test",
-            mobile="+441234567", country="UK",
+            lead,
+            name="Ada",
+            email="ada@example.test",
+            mobile="+441234567",
+            country="UK",
         )
         row = row_for(lead)
         assert (row["contact_name"], row["email"], row["mobile"], row["country"]) == (
-            "Ada", "ada@example.test", "+441234567", "UK",
+            "Ada",
+            "ada@example.test",
+            "+441234567",
+            "UK",
         )
 
     def test_status_update_writes_every_column_it_names(self, lead):
@@ -133,9 +140,10 @@ class TestChatInfoPaths:
 
         _save_info_to_database(
             lead,
-            {"contact_name": "Grace", "email": "grace@example.test",
-             "country": "US", "mobile": "+1555"},
-            "the original message", "sales", "COMMON",
+            {"contact_name": "Grace", "email": "grace@example.test", "country": "US", "mobile": "+1555"},
+            "the original message",
+            "sales",
+            "COMMON",
         )
         row = row_for(lead)
         assert row["contact_name"] == "Grace"
@@ -146,6 +154,7 @@ class TestChatInfoPaths:
 # ---------------------------------------------------------------------------
 # Prompts and domains
 # ---------------------------------------------------------------------------
+
 
 class TestPromptPaths:
     def test_select_all_prompts(self):
@@ -158,10 +167,7 @@ class TestPromptPaths:
 
         assert upsert_prompt(AUDIT_PROMPT_DOMAIN, "agent", "kind", "first")
         assert upsert_prompt(AUDIT_PROMPT_DOMAIN, "agent", "kind", "second")
-        stored = [
-            p for p in get_all_prompts()
-            if p["domain"] == AUDIT_PROMPT_DOMAIN and p["type"] == "kind"
-        ]
+        stored = [p for p in get_all_prompts() if p["domain"] == AUDIT_PROMPT_DOMAIN and p["type"] == "kind"]
         assert len(stored) == 1, "the ON CONFLICT clause should update, not duplicate"
         assert stored[0]["text"] == "second"
 
@@ -169,7 +175,7 @@ class TestPromptPaths:
         from system_prompt import find_parent_key, find_prompt, get_prompt
 
         assert find_prompt("COMMON", "sales", "base-prompt") is not None
-        find_parent_key("COMMON")          # nullable, just has to execute
+        find_parent_key("COMMON")  # nullable, just has to execute
         assert get_prompt("COMMON", "sales", "system")
         assert get_prompt("COMMON", "sales", "intro-message")
 
@@ -188,24 +194,31 @@ class TestDomainPaths:
         assert repo.find_by_address("example.com") is not None
         assert repo.find_by_id(1) is not None
 
-        created = repo.create(key="SQLPATHS", address=AUDIT_ADDRESS, parent_id=None,
-                              contact_name="Anjali", email="anjali@example.com", mobile=None)
+        created = repo.create(
+            key="SQLPATHS",
+            address=AUDIT_ADDRESS,
+            parent_id=None,
+            contact_name="Anjali",
+            email="anjali@example.com",
+            mobile=None,
+        )
         assert created["address"] == AUDIT_ADDRESS
         assert repo.find_by_address(AUDIT_ADDRESS)["key"] == "SQLPATHS"
 
         def contact(conn):
             with conn.cursor() as cur:
-                cur.execute("SELECT contact_name, email, mobile FROM domains WHERE address = %s;",
-                            (AUDIT_ADDRESS,))
+                cur.execute("SELECT contact_name, email, mobile FROM domains WHERE address = %s;", (AUDIT_ADDRESS,))
                 return cur.fetchone()
 
         from db_pool import run_with_retry
+
         assert run_with_retry(contact) == ("Anjali", "anjali@example.com", None)
 
 
 # ---------------------------------------------------------------------------
 # Chat history (the pooled LangChain subclass)
 # ---------------------------------------------------------------------------
+
 
 class TestHistoryPaths:
     def test_read_write_and_clear(self, lead):

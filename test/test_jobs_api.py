@@ -3,6 +3,7 @@ Tests for POST /jobs/periodic-summary, the endpoint Cloud Scheduler calls on
 Cloud Run. Token verification and periodic_summary() are stubbed; the
 advisory lock runs against the test database.
 """
+
 import os
 import sys
 import threading
@@ -161,9 +162,7 @@ class TestSingleRun:
         import psycopg
 
         with psycopg.connect(config.DATABASE_URL, autocommit=True) as other:
-            assert other.execute(
-                "SELECT pg_try_advisory_lock(%s)", (jobs.PERIODIC_SUMMARY_LOCK_KEY,)
-            ).fetchone()[0]
+            assert other.execute("SELECT pg_try_advisory_lock(%s)", (jobs.PERIODIC_SUMMARY_LOCK_KEY,)).fetchone()[0]
             resp = client.post(URL, headers=AUTH)
         assert resp.status_code == 409
         assert summary == []
@@ -183,9 +182,7 @@ class TestSingleRun:
 
         monkeypatch.setattr(jobs, "periodic_summary", slow_summary)
         first = {}
-        t = threading.Thread(
-            target=lambda: first.setdefault("resp", flask_app.test_client().post(URL, headers=AUTH))
-        )
+        t = threading.Thread(target=lambda: first.setdefault("resp", flask_app.test_client().post(URL, headers=AUTH)))
         t.start()
         assert started.wait(5)
         second = client.post(URL, headers=AUTH)
@@ -199,9 +196,7 @@ class TestSingleRun:
 
 class TestDatabaseDown:
     def test_unreachable_database_is_503(self, client, configured, summary, monkeypatch):
-        monkeypatch.setattr(
-            config, "DATABASE_URL", "postgresql://nobody@127.0.0.1:1/none"
-        )
+        monkeypatch.setattr(config, "DATABASE_URL", "postgresql://nobody@127.0.0.1:1/none")
         monkeypatch.setattr(config, "DB_CONNECT_TIMEOUT", 1)
         resp = client.post(URL, headers=AUTH)
         assert resp.status_code == 503
