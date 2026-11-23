@@ -2,12 +2,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_groq import ChatGroq
 
 from chat.history import get_session_history
 from chat.lead_capture import process_conversation
 from chat.prompts import get_prompt
-from core.config import GROQ_API_KEY, GROQ_MODEL_NAME
+from core.llm import get_chat_model
 
 
 def get_groq_response(input_text, session_id, request_type, domain):
@@ -30,7 +29,7 @@ def get_groq_response(input_text, session_id, request_type, domain):
     """
 
     # Create the LLM
-    llm = ChatGroq(groq_api_key=GROQ_API_KEY, model=GROQ_MODEL_NAME)
+    llm = get_chat_model()
     # Create the chain
     chain = prompt | llm
 

@@ -2,12 +2,12 @@ import json
 from datetime import datetime
 
 from langchain_core.messages import SystemMessage
-from langchain_groq import ChatGroq
 
 from chat.contact_validation import sanitise_contact_info
 from chat.prompts import get_prompt
-from core.config import GROQ_API_KEY, GROQ_MODEL_NAME, agent_type
+from core.config import agent_type
 from core.db_pool import with_connection
+from core.llm import get_chat_model
 
 
 def process_conversation(user_input, session_id, request_type, domain):
@@ -108,7 +108,7 @@ def _detect_info_with_llm(message, request_type, domain):
     """
     try:
         # Create LLM instance for contact info detection
-        llm = ChatGroq(groq_api_key=GROQ_API_KEY, model=GROQ_MODEL_NAME)
+        llm = get_chat_model()
 
         # prompt based on request type
         if request_type == agent_type.SALES:

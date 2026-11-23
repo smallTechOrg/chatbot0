@@ -136,15 +136,12 @@ def fake_llm(monkeypatch):
     class _Response:
         content = "  Visitor asked about pricing.  "
 
-    class _FakeChatGroq:
-        def __init__(self, **kwargs):
-            pass
-
+    class _FakeModel:
         def invoke(self, messages):
             calls.append(messages[0].content)
             return _Response()
 
-    monkeypatch.setattr(periodic, "ChatGroq", _FakeChatGroq)
+    monkeypatch.setattr(periodic, "get_chat_model", _FakeModel)
     return calls
 
 

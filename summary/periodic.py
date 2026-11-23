@@ -10,12 +10,12 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import SystemMessage
-from langchain_groq import ChatGroq
 from psycopg import sql
 from psycopg.rows import dict_row
 
 from core import config
 from core.db_pool import with_connection
+from core.llm import get_chat_model
 from core.paths import PROMPTS_DIR
 from summary.slack import send_summaries_to_slack
 
@@ -238,7 +238,7 @@ def summarise_conversation(conversation: list[dict[str, str]]) -> str:
         return SILENT_SUMMARY
 
     prompt = _get_summary_prompt_template().replace("{conversation}", _format_conversation_transcript(conversation))
-    llm = ChatGroq(groq_api_key=config.GROQ_API_KEY, model=config.GROQ_MODEL_NAME)
+    llm = get_chat_model()
     response = llm.invoke([SystemMessage(content=prompt)])
     return response.content.strip()
 
