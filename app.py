@@ -16,6 +16,7 @@ from core.config import APP_ENV, CHATBOT0_SECRET_KEY, DEBUG, PORT, SCHEDULER_ENA
 from core.logging import configure_logging
 from core.schema import init_db
 from summary.scheduler import start_scheduler, stop_scheduler
+from web import register_frontend
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ def create_app() -> Flask:
     # -- flask-smorest / OpenAPI configuration ---------------------------------
     # Auto-generated spec is served at /api/openapi.json.
     # Interactive Swagger UI is served at /api/docs.
-    # The legacy static swagger.yaml UI continues to run at / unchanged.
+    # The legacy static swagger.yaml UI is served at /api/legacy-docs.
     flask_app.config.update(
         API_TITLE="Chat API",
         API_VERSION="v1",
@@ -52,9 +53,8 @@ def create_app() -> Flask:
     register_blueprints(flask_app)
 
     # -- chatbot0 public pages (SMA-8), server-rendered under /chatbot0/ ------
-    # "/" stays the legacy Swagger UI; see chatbot0/__init__.py for the routing.
+    # Replaced by the Next.js frontend (web/); removed once those pages are ported.
     flask_app.register_blueprint(chatbot0_bp)
-    # ... and at the root of chatbot0.smalltech.in (host-based; other hosts unchanged).
     register_host_routing(flask_app)
 
     # -- Admin pages (/chatbot0/admin/) ---------------------------------------
@@ -75,6 +75,10 @@ def create_app() -> Flask:
     smorest_api.register_blueprint(domains_bp)
 
     CORS(flask_app)
+
+    # -- Frontend (the Next.js export) ------------------------------------------
+    # Last: it answers only what no route above matched, so the APIs always win.
+    register_frontend(flask_app, api_error=smorest_api.handle_http_exception)
 
     # -- Background jobs -------------------------------------------------------
     # Locally the periodic summary runs in a thread of this process. On Cloud Run
