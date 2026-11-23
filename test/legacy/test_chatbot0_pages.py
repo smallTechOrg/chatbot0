@@ -1,5 +1,5 @@
 """chatbot0 public pages (SMA-8): they render, carry the right links and SEO,
-and leave the existing routes ("/" Swagger UI, /health, the API) alone."""
+and leave the existing routes (/health, the API) alone."""
 
 import pytest
 
@@ -79,14 +79,6 @@ def test_prefix_without_slash_redirects_to_landing(client):
     assert res.headers["Location"].endswith("/chatbot0/")
 
 
-def test_root_is_still_the_swagger_ui(client):
-    res = client.get("/")
-    assert res.status_code == 200
-    html = res.get_data(as_text=True)
-    assert "swagger" in html.lower()
-    assert "chatbot0" not in html
-
-
 HOST = {"Host": "chatbot0.smalltech.in"}
 
 
@@ -104,11 +96,6 @@ def test_chatbot0_host_serves_assets_at_root(client, path):
 
 def test_chatbot0_host_leaves_api_paths_alone(client):
     assert client.get("/health", headers=HOST).status_code == client.get("/health").status_code
-
-
-def test_other_hosts_keep_swagger_at_root(client):
-    html = client.get("/", headers={"Host": "zero-sales-agent-a23rjysfbq-uc.a.run.app"}).get_data(as_text=True)
-    assert "chatbot<span" not in html
 
 
 def test_chat_widget_is_on_the_chatbot0_host_only(client):
