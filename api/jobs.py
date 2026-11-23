@@ -14,7 +14,7 @@ job is created with --oidc-service-account-email.
 import contextlib
 import threading
 import traceback
-from typing import Iterator
+from collections.abc import Iterator
 
 import psycopg
 from flask import Blueprint, jsonify, request

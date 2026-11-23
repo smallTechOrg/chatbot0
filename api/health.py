@@ -22,10 +22,9 @@ def health():
     }
 
     try:
-        with get_connection(attempts=1, timeout=config.DB_HEALTH_TIMEOUT) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-                cur.fetchone()
+        with get_connection(attempts=1, timeout=config.DB_HEALTH_TIMEOUT) as conn, conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
         status["database"] = "connected"
         code = 200
     except Exception as e:

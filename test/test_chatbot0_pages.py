@@ -5,7 +5,6 @@ import pytest
 
 from chatbot0 import content
 
-
 PAGES = ["/", "/pricing", "/sales", "/support", "/industries", "/about", "/signup"]
 
 

@@ -5,7 +5,6 @@ on config.PERIODIC_SUMMARY_CRON in config.PERIODIC_SUMMARY_TIMEZONE.
 import atexit
 import threading
 import traceback
-from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -15,7 +14,7 @@ from periodic_summary import periodic_summary
 
 JOB_ID = "periodic_summary"
 
-_scheduler: Optional[BackgroundScheduler] = None
+_scheduler: BackgroundScheduler | None = None
 _lock = threading.Lock()
 
 
@@ -86,7 +85,7 @@ def stop_scheduler() -> None:
         print("[SCHEDULER] stopped")
 
 
-def get_scheduler() -> Optional[BackgroundScheduler]:
+def get_scheduler() -> BackgroundScheduler | None:
     """The running scheduler, or None."""
     return _scheduler
 

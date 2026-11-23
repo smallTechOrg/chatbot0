@@ -11,9 +11,9 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import config  # noqa: E402
-from api import jobs  # noqa: E402
-from app import app as flask_app  # noqa: E402
+import config
+from api import jobs
+from app import app as flask_app
 
 INVOKER = "zero-scheduler@example.iam.gserviceaccount.com"
 AUDIENCE = "zero-sales-agent-jobs"

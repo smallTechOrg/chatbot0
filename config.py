@@ -7,8 +7,10 @@ and what belongs in ``.env`` -- which carries values only, never definitions.
 """
 import os
 import re
-from dotenv import load_dotenv
 from enum import Enum
+
+from dotenv import load_dotenv
+
 load_dotenv()
 
 

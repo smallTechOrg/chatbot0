@@ -1,13 +1,15 @@
-from typing import List, Dict, Any, Tuple
+from http import HTTPStatus
+from typing import Any
+
 from psycopg import sql
 from psycopg.rows import dict_row
+
 import config
 from db_pool import with_connection
-from http import HTTPStatus
 
 
 @with_connection
-def _select_chat_info(conn) -> List[Dict[str, Any]]:
+def _select_chat_info(conn) -> list[dict[str, Any]]:
     # Only chats where the visitor wrote at least one message. Opening the
     # widget saves the intro message, and the periodic summary then makes a
     # chat_info row for that session; those rows are not leads.
@@ -38,7 +40,7 @@ def _select_chat_info(conn) -> List[Dict[str, Any]]:
         return cur.fetchall()
 
 
-def get_all_chat_info() -> Tuple[List[Dict[str, Any]], HTTPStatus]:
+def get_all_chat_info() -> tuple[list[dict[str, Any]], HTTPStatus]:
     """
     Retrieve all stored chat info records.
     """

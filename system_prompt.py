@@ -1,8 +1,4 @@
-import json
-from pathlib import Path
-from functools import lru_cache
 from db_pool import with_connection
-from config import DEFAULT_DOMAIN, agent_type
 
 FORMATTING_INSTRUCTION = """
 

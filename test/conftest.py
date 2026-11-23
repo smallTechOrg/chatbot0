@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 import pytest
 
 # Add the project's root directory (the parent of 'test') to Python's search path
@@ -15,6 +16,7 @@ os.environ["DASHBOARD_URL"] = "http://localhost:3001/dashboard"
 
 # Now that the path is set, we can import the app
 from app import app as flask_app
+
 
 @pytest.fixture
 def app():

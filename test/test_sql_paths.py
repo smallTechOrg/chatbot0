@@ -11,8 +11,8 @@ each one once, so a column that does not exist fails here instead of in
 production. They assert on the results only lightly; the point is that the SQL
 executes and touches the columns it claims to.
 """
-import sys
 import os
+import sys
 import uuid
 
 import pytest
@@ -20,9 +20,10 @@ from psycopg.rows import dict_row
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import config  # noqa: E402
-import db_pool  # noqa: E402
-from psycopg import sql  # noqa: E402
+from psycopg import sql
+
+import config
+import db_pool
 
 AUDIT_PROMPT_DOMAIN = "_sqlpaths_domain"
 AUDIT_ADDRESS = "sqlpaths-example.invalid"

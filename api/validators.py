@@ -1,9 +1,11 @@
+import uuid
 from http import HTTPStatus
 from urllib.parse import urlparse
+
 from api.models import ValidationResponse
-from config import max_input_length, agent_type , status_type
-import uuid
+from config import agent_type, max_input_length, status_type
 from db_pool import with_connection
+
 
 def chat_api_validate(request) -> ValidationResponse:
     chat_input_validation_response = validate_chat_user_input(request)

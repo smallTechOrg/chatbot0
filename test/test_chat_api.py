@@ -11,8 +11,8 @@ Covers three fixes:
 3. That fix must not relabel malformed requests: a body that is not JSON still
    has to come back as 415, not 500.
 """
-import sys
 import os
+import sys
 import uuid
 from unittest.mock import patch
 
@@ -22,7 +22,7 @@ from psycopg.rows import dict_row
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import db_pool  # noqa: E402
+import db_pool
 
 ORIGIN = {"Origin": "http://example.com"}
 

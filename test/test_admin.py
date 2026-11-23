@@ -8,13 +8,13 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import admin  # noqa: E402
-import config  # noqa: E402
-import crypto  # noqa: E402
-from app import app as flask_app  # noqa: E402
-from db_pool import get_connection  # noqa: E402
-from whatsapp import repository  # noqa: E402
-from whatsapp.client import GraphResult  # noqa: E402
+import admin
+import config
+import crypto
+from app import app as flask_app
+from db_pool import get_connection
+from whatsapp import repository
+from whatsapp.client import GraphResult
 
 PASSWORD = "admin-pass-for-tests"
 

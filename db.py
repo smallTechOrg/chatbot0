@@ -7,12 +7,11 @@ import time
 import traceback
 
 import psycopg
+from langchain_postgres import PostgresChatMessageHistory
 
 import config
 from db_pool import RETRYABLE_ERRORS, run_with_retry
-from langchain_postgres import PostgresChatMessageHistory
 from prompts_table import check_and_insert_default_prompts
-
 
 _bootstrap_lock = threading.Lock()
 _bootstrap_thread = None

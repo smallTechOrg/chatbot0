@@ -2,8 +2,8 @@
 Tests for the periodic summary chain against the real schema.
 The LLM call is stubbed, so no Groq key is needed.
 """
-import sys
 import os
+import sys
 import uuid
 from datetime import timedelta
 
@@ -11,10 +11,11 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import config  # noqa: E402
-import db_pool  # noqa: E402
-from psycopg import sql  # noqa: E402
-from psycopg.rows import dict_row  # noqa: E402
+from psycopg import sql
+from psycopg.rows import dict_row
+
+import config
+import db_pool
 
 
 def _insert_message(session_id, age, msg_type="human", content="hi"):

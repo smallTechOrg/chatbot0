@@ -1,6 +1,6 @@
-import pytest
 import uuid
 from http import HTTPStatus
+
 
 class TestHistoryAPI:
     """Test suite for the history API using the Flask test client."""

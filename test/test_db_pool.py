@@ -11,8 +11,8 @@ These cover the two failures that prompted it:
 
 Like the other tests in this project, these need a live database.
 """
-import sys
 import os
+import sys
 import threading
 import uuid
 from unittest.mock import patch
@@ -22,10 +22,9 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import db_pool  # noqa: E402
-import config  # noqa: E402
-from config import DATABASE_URL  # noqa: E402
-
+import config
+import db_pool
+from config import DATABASE_URL
 
 # ---------------------------------------------------------------------------
 # Helpers

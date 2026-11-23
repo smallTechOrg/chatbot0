@@ -2,16 +2,16 @@
 Tests for formatting a periodic_summary() result as a Slack message.
 The webhook POST is stubbed; nothing reaches Slack.
 """
-import sys
 import os
-from datetime import datetime, timezone
+import sys
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import slack_notify  # noqa: E402
+import slack_notify
 
 IST = ZoneInfo("Asia/Kolkata")
 RUN_AT = datetime(2026, 10, 7, 17, 0, tzinfo=IST)
@@ -92,7 +92,7 @@ class TestFormatTime:
 
     def test_database_utc_timestamp_is_shown_in_ist(self):
         # 10:43 UTC is 4:13 pm in Kolkata.
-        utc = datetime(2026, 10, 7, 10, 43, tzinfo=timezone.utc)
+        utc = datetime(2026, 10, 7, 10, 43, tzinfo=UTC)
         assert slack_notify.format_line_time(utc) == "7th Oct, 4:13 pm"
 
     def test_naive_timestamp_is_taken_as_display_timezone(self):

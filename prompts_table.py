@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
-from functools import lru_cache
-from config import agent_type, DEFAULT_DOMAIN
+
+from config import DEFAULT_DOMAIN
 from db_pool import with_connection
 
 
@@ -10,7 +10,7 @@ def load_json(path: Path):
     Load file content. If valid JSON, return as JSON string. Otherwise return as plain text.
     """
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             content = f.read()
         # Try to parse as JSON; if it succeeds, return canonical JSON string
         try:

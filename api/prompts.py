@@ -1,9 +1,10 @@
-from http import HTTPStatus
 import traceback
-from flask import Blueprint, request, jsonify
+from http import HTTPStatus
+
+from flask import Blueprint, jsonify, request
+
 from api.models import APIResponse
 from prompts_table import get_all_prompts, upsert_prompt
-
 
 prompt_bp = Blueprint("prompts", __name__)
 
@@ -31,6 +32,6 @@ def create_or_update_prompt():
             return jsonify({"success": True, "message": "Prompt created/updated."}), 200
         else:
             return jsonify({"success": False, "error": "Failed to create/update prompt."}), 500
-    except Exception as e:
+    except Exception:
         print(traceback.format_exc())
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)

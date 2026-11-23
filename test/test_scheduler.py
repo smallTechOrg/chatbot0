@@ -2,14 +2,14 @@
 Tests for the scheduler: job registration, one scheduler per process, and errors
 not stopping the next run. periodic_summary() is stubbed.
 """
-import sys
 import os
+import sys
 
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import scheduler  # noqa: E402
+import scheduler
 
 
 @pytest.fixture(autouse=True)

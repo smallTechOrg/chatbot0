@@ -14,13 +14,13 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import config  # noqa: E402
-import crypto  # noqa: E402
-from app import app as flask_app  # noqa: E402
-from db_pool import get_connection  # noqa: E402
-from whatsapp import repository, service  # noqa: E402
-from whatsapp.client import GraphResult, signature_is_valid  # noqa: E402
-from whatsapp.formatting import split_message, to_whatsapp  # noqa: E402
+import config
+import crypto
+from app import app as flask_app
+from db_pool import get_connection
+from whatsapp import repository, service
+from whatsapp.client import GraphResult, signature_is_valid
+from whatsapp.formatting import split_message, to_whatsapp
 
 APP_SECRET = "test-app-secret"
 TOKEN = "EAAtest-token"

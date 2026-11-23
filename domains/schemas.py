@@ -7,7 +7,8 @@ These schemas serve three purposes simultaneously:
   3. OpenAPI documentation – flask-smorest reflects the schema into the generated spec.
 """
 import re
-from marshmallow import Schema, fields, validate, validates, pre_load, ValidationError, EXCLUDE
+
+from marshmallow import EXCLUDE, Schema, ValidationError, fields, pre_load, validate, validates
 
 
 class CreateDomainRequest(Schema):

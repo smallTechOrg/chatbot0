@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from typing import Optional
 
 from psycopg.rows import dict_row
 
@@ -33,14 +32,14 @@ def list_connections(conn) -> list[dict]:
 
 
 @with_connection
-def get_connection(conn, connection_id: str) -> Optional[dict]:
+def get_connection(conn, connection_id: str) -> dict | None:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(f"SELECT {_PUBLIC} FROM whatsapp_connections WHERE id = %s;", (connection_id,))
         return cur.fetchone()
 
 
 @with_connection
-def _credentials(conn, where: str, value: str) -> Optional[dict]:
+def _credentials(conn, where: str, value: str) -> dict | None:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             f"SELECT {_PUBLIC}, access_token_enc, app_secret_enc FROM whatsapp_connections WHERE {where} = %s;",
@@ -49,7 +48,7 @@ def _credentials(conn, where: str, value: str) -> Optional[dict]:
         return cur.fetchone()
 
 
-def _with_plain_credentials(row: Optional[dict]) -> Optional[dict]:
+def _with_plain_credentials(row: dict | None) -> dict | None:
     if row is None:
         return None
     row = dict(row)
@@ -58,12 +57,12 @@ def _with_plain_credentials(row: Optional[dict]) -> Optional[dict]:
     return row
 
 
-def get_connection_with_credentials(connection_id: str) -> Optional[dict]:
+def get_connection_with_credentials(connection_id: str) -> dict | None:
     """The connection with its decrypted access_token and app_secret. Server-side use only."""
     return _with_plain_credentials(_credentials("id", connection_id))
 
 
-def get_connection_by_number(phone_number_id: str) -> Optional[dict]:
+def get_connection_by_number(phone_number_id: str) -> dict | None:
     return _with_plain_credentials(_credentials("phone_number_id", phone_number_id))
 
 
@@ -90,8 +89,8 @@ def create_connection(conn, phone_number_id: str, domain_key: str, access_token:
 
 
 @with_connection
-def update_credentials(conn, connection_id: str, access_token: Optional[str] = None,
-                       app_secret: Optional[str] = None, domain_key: Optional[str] = None) -> bool:
+def update_credentials(conn, connection_id: str, access_token: str | None = None,
+                       app_secret: str | None = None, domain_key: str | None = None) -> bool:
     """Replace any of the token, app secret or domain. Clears the error state."""
     with conn.cursor() as cur:
         if domain_key:
@@ -117,7 +116,7 @@ def update_credentials(conn, connection_id: str, access_token: Optional[str] = N
 
 
 @with_connection
-def mark_checked(conn, connection_id: str, display_number: Optional[str], verified_name: Optional[str]) -> None:
+def mark_checked(conn, connection_id: str, display_number: str | None, verified_name: str | None) -> None:
     """The token worked against the Graph API."""
     with conn.cursor() as cur:
         cur.execute(
@@ -186,7 +185,7 @@ def claim_message(conn, message_id: str) -> bool:
 
 
 @with_connection
-def ensure_chat_info(conn, session_id: str, domain: str, request_type: str, mobile: str, name: Optional[str]) -> None:
+def ensure_chat_info(conn, session_id: str, domain: str, request_type: str, mobile: str, name: str | None) -> None:
     """
     Make the lead row for a WhatsApp chat: channel 'whatsapp', the sender's
     number as mobile, their WhatsApp profile name as contact name. Both only

@@ -9,16 +9,16 @@ Public surface
 """
 from domains.repository import DomainRepository
 from domains.service import (
-    DomainService,
     DomainAlreadyExistsError,
+    DomainService,
     InvalidWebsiteURLError,
     ParentDomainNotFoundError,
 )
 
 __all__ = [
+    "DomainAlreadyExistsError",
     "DomainRepository",
     "DomainService",
-    "DomainAlreadyExistsError",
     "InvalidWebsiteURLError",
     "ParentDomainNotFoundError",
 ]

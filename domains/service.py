@@ -13,11 +13,9 @@ tests can provide a mock without touching the database.
 from __future__ import annotations
 
 import re
-from typing import Optional
 from urllib.parse import urlparse
 
 from domains.repository import DomainRepository
-
 
 # ---------------------------------------------------------------------------
 # Domain-specific exceptions
@@ -56,9 +54,9 @@ class DomainService:
     def add_domain(
         self,
         website_url: str,
-        key: Optional[str] = None,
-        parent_id: Optional[int] = None,
-        contact: Optional[dict] = None,
+        key: str | None = None,
+        parent_id: int | None = None,
+        contact: dict | None = None,
     ) -> dict:
         """
         Validate, extract and persist a new domain derived from *website_url*.
@@ -120,7 +118,7 @@ class DomainService:
 
         return domain
 
-    def get_domain(self, domain_id: int) -> Optional[dict]:
+    def get_domain(self, domain_id: int) -> dict | None:
         """Return the domain with *domain_id*, or ``None`` if not found."""
         return self._repo.find_by_id(domain_id)
 
@@ -132,7 +130,7 @@ class DomainService:
     # Static helpers – kept on the class so tests can call them directly.
     # ------------------------------------------------------------------
 
-    def _ensure_www(self, address: str, key: str, parent_id: Optional[int]) -> None:
+    def _ensure_www(self, address: str, key: str, parent_id: int | None) -> None:
         """Add the www variant of *address* if it is not there yet."""
         www_address = f"www.{address}"
         if self._repo.find_by_address(www_address) is None:
@@ -166,7 +164,7 @@ class DomainService:
             url = f"https://{url}"
 
         parsed = urlparse(url)
-        hostname: Optional[str] = parsed.hostname  # lowercased, port stripped
+        hostname: str | None = parsed.hostname  # lowercased, port stripped
 
         if not hostname:
             raise InvalidWebsiteURLError(
@@ -204,7 +202,7 @@ class DomainService:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _resolve_key(self, raw_key: Optional[str], address: str) -> str:
+    def _resolve_key(self, raw_key: str | None, address: str) -> str:
         """Return the caller-supplied key (normalised) or auto-generate one."""
         if raw_key and raw_key.strip():
             return raw_key.strip().upper()

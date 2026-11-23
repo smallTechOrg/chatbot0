@@ -13,7 +13,6 @@ from contact_validation import (
 )
 from conversation_processor import conversation_processor as cp
 
-
 # --------------------------------------------------------------------- email
 
 @pytest.mark.parametrize("value, expected", [

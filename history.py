@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from typing import List
 
 from langchain_core.messages import BaseMessage
 from langchain_postgres import PostgresChatMessageHistory
@@ -7,7 +6,6 @@ from langchain_postgres import PostgresChatMessageHistory
 from config import table_name
 from db_pool import run_with_retry
 from system_prompt import get_prompt
-
 
 # PostgresChatMessageHistory.__init__ only checks that a connection is given.
 # Each method below puts a pooled connection in place of this one.
@@ -38,7 +36,7 @@ class PooledChatMessageHistory(PostgresChatMessageHistory):
 
         return run_with_retry(with_connection, label=label)
 
-    def get_messages(self) -> List[BaseMessage]:
+    def get_messages(self) -> list[BaseMessage]:
         return self._run(super().get_messages, "chat history read")
 
     def add_messages(self, messages) -> None:

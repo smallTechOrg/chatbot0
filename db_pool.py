@@ -8,11 +8,12 @@ from __future__ import annotations
 import atexit
 import functools
 import signal
-import traceback
 import threading
 import time
+import traceback
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from typing import Any, Callable, Iterator, Optional, TypeVar
+from typing import Any, TypeVar
 
 import psycopg
 from psycopg_pool import ConnectionPool
@@ -51,7 +52,7 @@ class DatabaseUnavailable(psycopg.OperationalError):
 # Pool lifecycle
 # ---------------------------------------------------------------------------
 
-_pool: Optional[ConnectionPool] = None
+_pool: ConnectionPool | None = None
 _pool_lock = threading.Lock()
 
 
@@ -116,7 +117,7 @@ def get_pool() -> ConnectionPool:
     return _pool
 
 
-def _take_pool() -> Optional[ConnectionPool]:
+def _take_pool() -> ConnectionPool | None:
     """Detach the current pool, if any, so it can be closed exactly once."""
     global _pool
     with _pool_lock:
@@ -199,11 +200,11 @@ def _rollback_quietly(conn: psycopg.Connection) -> None:
 def _getconn_with_retry(
     pool: ConnectionPool,
     attempts: int,
-    timeout: Optional[float] = None,
+    timeout: float | None = None,
 ) -> psycopg.Connection:
     """Take a connection from the pool, retrying while the database is away."""
     delay = config.DB_RETRY_BASE_DELAY
-    last_error: Optional[BaseException] = None
+    last_error: BaseException | None = None
 
     for attempt in range(1, attempts + 1):
         try:
@@ -229,8 +230,8 @@ def _getconn_with_retry(
 @contextmanager
 def get_connection(
     *,
-    attempts: Optional[int] = None,
-    timeout: Optional[float] = None,
+    attempts: int | None = None,
+    timeout: float | None = None,
 ) -> Iterator[psycopg.Connection]:
     """
     Take one connection from the pool. Commit on success, roll back on an
@@ -263,9 +264,9 @@ def get_connection(
 def run_with_retry(
     operation: Callable[[psycopg.Connection], T],
     *,
-    attempts: Optional[int] = None,
-    timeout: Optional[float] = None,
-    label: Optional[str] = None,
+    attempts: int | None = None,
+    timeout: float | None = None,
+    label: str | None = None,
 ) -> T:
     """
     Run operation(conn) on a pooled connection. Retry on a new connection if
@@ -274,7 +275,7 @@ def run_with_retry(
     attempts = config.DB_RETRY_ATTEMPTS if attempts is None else attempts
     what = label or getattr(operation, "__name__", "database operation")
     delay = config.DB_RETRY_BASE_DELAY
-    last_error: Optional[BaseException] = None
+    last_error: BaseException | None = None
 
     for attempt in range(1, attempts + 1):
         try:

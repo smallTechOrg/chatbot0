@@ -20,8 +20,7 @@ import re
 import secrets
 import unicodedata
 
-from flask import (Blueprint, abort, flash, redirect, render_template, request,
-                   session, url_for)
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
 import config
 from db_pool import with_connection

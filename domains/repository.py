@@ -4,8 +4,6 @@ connection from the pool for one query. The repository keeps no connection.
 """
 from __future__ import annotations
 
-from typing import Optional
-
 from db_pool import run_with_retry
 
 
@@ -19,7 +17,7 @@ class DomainRepository:
     # Queries
     # ------------------------------------------------------------------
 
-    def find_by_address(self, address: str) -> Optional[dict]:
+    def find_by_address(self, address: str) -> dict | None:
         """Return the domain record matching *address*, or ``None``."""
 
         def query(conn):
@@ -34,7 +32,7 @@ class DomainRepository:
         row = run_with_retry(query, label="DomainRepository.find_by_address")
         return self._to_dict(row) if row else None
 
-    def find_by_id(self, domain_id: int) -> Optional[dict]:
+    def find_by_id(self, domain_id: int) -> dict | None:
         """Return the domain record with the given primary key, or ``None``."""
 
         def query(conn):
@@ -70,10 +68,10 @@ class DomainRepository:
         self,
         key: str,
         address: str,
-        parent_id: Optional[int] = None,
-        contact_name: Optional[str] = None,
-        email: Optional[str] = None,
-        mobile: Optional[str] = None,
+        parent_id: int | None = None,
+        contact_name: str | None = None,
+        email: str | None = None,
+        mobile: str | None = None,
     ) -> dict:
         """
         Add a domain row and return it. Raise UniqueViolation if the address

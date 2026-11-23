@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import traceback
 import uuid
-from typing import Iterator, Optional
+from collections.abc import Iterator
 
 from config import agent_type
 from llm_api import get_groq_response
@@ -38,7 +38,7 @@ def session_id_for(phone_number_id: str, wa_id: str) -> str:
     return str(uuid.uuid5(_SESSION_NAMESPACE, f"{phone_number_id}:{wa_id}"))
 
 
-def _message_text(msg: dict) -> Optional[str]:
+def _message_text(msg: dict) -> str | None:
     kind = msg.get("type")
     if kind == "text":
         return (msg.get("text") or {}).get("body")
@@ -120,7 +120,7 @@ def handle_payload(connection: dict, payload: dict) -> None:
             print(traceback.format_exc())
 
 
-def handle_text(conn: dict, wa_id: str, name: Optional[str], text: str) -> None:
+def handle_text(conn: dict, wa_id: str, name: str | None, text: str) -> None:
     session_id = session_id_for(conn["phone_number_id"], wa_id)
     domain = conn["domain_key"]
     try:
@@ -157,4 +157,4 @@ def _record_failure(conn: dict, error: str, token_problem: bool) -> None:
         notify_whatsapp_problem(conn, error)
 
 
-__all__ = ["handle_payload", "iter_events", "session_id_for", "GraphResult"]
+__all__ = ["GraphResult", "handle_payload", "iter_events", "session_id_for"]

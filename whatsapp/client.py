@@ -10,7 +10,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 from dataclasses import dataclass
-from typing import Optional
 
 import requests
 
@@ -27,16 +26,16 @@ TOKEN_ERROR_CODES = {190}
 @dataclass
 class GraphResult:
     ok: bool
-    data: Optional[dict] = None
-    error: Optional[str] = None
-    code: Optional[int] = None
+    data: dict | None = None
+    error: str | None = None
+    code: int | None = None
 
     @property
     def token_problem(self) -> bool:
         return self.code in TOKEN_ERROR_CODES or (self.error or "").startswith("HTTP 401")
 
 
-def signature_is_valid(raw_body: bytes, header: Optional[str], app_secret: str) -> bool:
+def signature_is_valid(raw_body: bytes, header: str | None, app_secret: str) -> bool:
     """Check Meta's X-Hub-Signature-256 ("sha256=<hex>") against the raw body."""
     if not app_secret or not header or not header.startswith("sha256="):
         return False

@@ -6,7 +6,7 @@ summary_notified_at), and post to Slack, resending until Slack has it.
 import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from langchain_core.messages import SystemMessage
@@ -33,7 +33,7 @@ SILENT_SUMMARY = "Opened the chat but did not write anything."
 MAX_TRANSCRIPT_CHARS = 20_000
 
 
-def periodic_summary() -> Dict[str, Any]:
+def periodic_summary() -> dict[str, Any]:
     """
     Summarise chats that need it and save each summary, add saved summaries
     that never reached Slack, post all to Slack, and mark the sent ones as
@@ -72,13 +72,13 @@ def periodic_summary() -> Dict[str, Any]:
     # Pass two: summaries saved earlier that never reached Slack. A session
     # pass one touched this run is skipped: it either has a fresher summary
     # already in the list, or it failed and keeps its old row for next time.
-    resent: List[Dict[str, Any]] = []
+    resent: list[dict[str, Any]] = []
     try:
         handled = {s["session_id"] for s in sessions}
         for row in find_unnotified_summaries():
             if row["session_id"] in handled:
                 continue
-            entry: Dict[str, Any] = {
+            entry: dict[str, Any] = {
                 "session_id": row["session_id"],
                 "summary": row["summary"],
                 "first_message": row["first_message"],
@@ -131,7 +131,7 @@ def periodic_summary() -> Dict[str, Any]:
 
 
 @with_connection
-def find_chats_needing_summary(conn, window: timedelta = SUMMARY_WINDOW) -> List[Dict[str, Any]]:
+def find_chats_needing_summary(conn, window: timedelta = SUMMARY_WINDOW) -> list[dict[str, Any]]:
     """
     Return one row per chat with a message in *window* that has no summary yet
     or got new messages after its summary was written, joined with its
@@ -171,7 +171,7 @@ def find_chats_needing_summary(conn, window: timedelta = SUMMARY_WINDOW) -> List
         return cur.fetchall()
 
 @with_connection
-def fetch_full_conversation_history(conn, session_id: str) -> List[Dict[str, str]]:
+def fetch_full_conversation_history(conn, session_id: str) -> list[dict[str, str]]:
     """
     Return every message of one session (not just the window), oldest first,
     as {"type": "human" | "ai", "content": "..."}. Unknown session gives [].
@@ -190,7 +190,7 @@ def fetch_full_conversation_history(conn, session_id: str) -> List[Dict[str, str
         cur.execute(query, {"session_id": session_id})
         return cur.fetchall()
 
-def _format_conversation_transcript(conversation: List[Dict[str, str]]) -> str:
+def _format_conversation_transcript(conversation: list[dict[str, str]]) -> str:
     """Render the messages as 'Visitor: ...' / 'Agent: ...' lines."""
     label = {"human": "Visitor", "ai": "Agent"}
     lines = [f"{label.get(m['type'], m['type'])}: {m['content']}" for m in conversation]
@@ -218,12 +218,12 @@ def extract_llm_error_reason(exc: BaseException) -> str:
     return str(exc).strip() or type(exc).__name__
 
 
-def is_silent(conversation: List[Dict[str, str]]) -> bool:
+def is_silent(conversation: list[dict[str, str]]) -> bool:
     """True when the visitor never wrote: only agent messages, or none."""
     return not any(m["type"] == "human" for m in conversation)
 
 
-def summarise_conversation(conversation: List[Dict[str, str]]) -> str:
+def summarise_conversation(conversation: list[dict[str, str]]) -> str:
     """
     Ask the LLM for a short plain-text summary of one conversation. Raises if
     the LLM call fails; periodic_summary() decides what to do with that.
@@ -258,7 +258,7 @@ def save_summary(conn, session_id: str, summary: str) -> None:
 
 
 @with_connection
-def mark_summaries_notified(conn, session_ids: List[str]) -> int:
+def mark_summaries_notified(conn, session_ids: list[str]) -> int:
     """
     Set summary_notified_at = NOW() on the given sessions. Called after Slack
     accepted the message that carried their summaries. Returns the number of
@@ -281,7 +281,7 @@ def mark_summaries_notified(conn, session_ids: List[str]) -> int:
 
 
 @with_connection
-def find_unnotified_summaries(conn) -> List[Dict[str, Any]]:
+def find_unnotified_summaries(conn) -> list[dict[str, Any]]:
     """
     Return chats with a saved summary that was never sent to Slack
     (summary_notified_at IS NULL), newest first, with no time limit.

@@ -4,7 +4,7 @@ One line per conversation ("7th Oct, 4:13 pm - SMALLTECH - Anjali - summary"); L
 become one sentence at the end, and silent sessions are left out.
 """
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
@@ -26,7 +26,7 @@ SENDER = "chatbot0-updates"
 ERROR_SEPARATOR = "; "
 
 
-def send_summaries_to_slack(result: Dict[str, Any]) -> Dict[str, Any]:
+def send_summaries_to_slack(result: dict[str, Any]) -> dict[str, Any]:
     """
     Send the whole summary. Returns {"sent": n, "skipped": reason?}.
     Nothing is sent when there are no sessions, only silent sessions, or no
@@ -51,7 +51,7 @@ def send_summaries_to_slack(result: Dict[str, Any]) -> Dict[str, Any]:
     return {"sent": len(messages)}
 
 
-def build_messages(result: Dict[str, Any]) -> List[Dict[str, Any]]:
+def build_messages(result: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Turn a periodic_summary() result into webhook payloads. Normally one; a very
     long run is split, and each part repeats the header. Sessions whose LLM
@@ -72,7 +72,7 @@ def build_messages(result: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     header = _header(result)
 
-    messages: List[Dict[str, Any]] = []
+    messages: list[dict[str, Any]] = []
     current = [header]
     size = len(header)
     for line in lines:
@@ -86,11 +86,11 @@ def build_messages(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     return messages
 
 
-def _payload(lines: List[str]) -> Dict[str, Any]:
+def _payload(lines: list[str]) -> dict[str, Any]:
     return {"username": SENDER, "text": "\n".join(lines)}
 
 
-def post_to_slack(payload: Dict[str, Any], webhook_url: str = None) -> None:
+def post_to_slack(payload: dict[str, Any], webhook_url: str = None) -> None:
     """POST one payload to the webhook. Raises on a non-2xx answer."""
     url = webhook_url or config.SLACK_WEBHOOK_URL
     response = requests.post(url, json=payload, timeout=config.SLACK_TIMEOUT)
@@ -98,7 +98,7 @@ def post_to_slack(payload: Dict[str, Any], webhook_url: str = None) -> None:
         raise RuntimeError(f"Slack webhook returned {response.status_code}: {response.text[:200]}")
 
 
-def notify_signup(address: str, contact: Optional[Dict[str, Any]] = None) -> bool:
+def notify_signup(address: str, contact: dict[str, Any] | None = None) -> bool:
     """
     Post one line about a new chatbot0 sign-up to the same channel:
     "New chatbot0 sign-up: acme.com - Anjali - anjali@acme.com".
@@ -116,7 +116,7 @@ def notify_signup(address: str, contact: Optional[Dict[str, Any]] = None) -> boo
         return False
 
 
-def notify_whatsapp_problem(connection: Dict[str, Any], error: str) -> bool:
+def notify_whatsapp_problem(connection: dict[str, Any], error: str) -> bool:
     """
     One line when a WhatsApp connection starts failing, e.g. an expired token:
     "WhatsApp needs attention: ACME (+1 555...) - HTTP 401: ...". Never raises.
@@ -136,7 +136,7 @@ def notify_whatsapp_problem(connection: Dict[str, Any], error: str) -> bool:
         return False
 
 
-def build_signup_text(address: str, contact: Optional[Dict[str, Any]] = None) -> str:
+def build_signup_text(address: str, contact: dict[str, Any] | None = None) -> str:
     contact = contact or {}
     parts = [_escape(address)]
     for name in ("contact_name", "email", "mobile"):
@@ -150,8 +150,8 @@ def build_signup_text(address: str, contact: Optional[Dict[str, Any]] = None) ->
     return f"*[{label}]* {text}" if label else text
 
 
-def _header(result: Dict[str, Any]) -> str:
-    run_at: Optional[datetime] = result.get("run_at")
+def _header(result: dict[str, Any]) -> str:
+    run_at: datetime | None = result.get("run_at")
     title = TITLE
     if isinstance(run_at, datetime):
         title = f"{TITLE} - {format_header_time(run_at)}"
@@ -169,7 +169,7 @@ def format_header_time(value: datetime) -> str:
     return f"{_ordinal(value.day)} {value.strftime('%b %Y')} - {_clock(value)} {value.strftime('%Z')}"
 
 
-def _conversation_line(session: Dict[str, Any]) -> str:
+def _conversation_line(session: dict[str, Any]) -> str:
     first = session.get("first_message")
     when = format_line_time(first) if isinstance(first, datetime) else "unknown time"
 
@@ -193,13 +193,13 @@ def format_line_time(value: datetime) -> str:
     return f"{_ordinal(value.day)} {value.strftime('%b')}, {_clock(value)}"
 
 
-def _llm_failure_line(failed: List[Dict[str, Any]], total: int) -> str:
+def _llm_failure_line(failed: list[dict[str, Any]], total: int) -> str:
     """
     One sentence for the sessions whose LLM call failed. Distinct errors are
     listed once each, in the order they were first seen. The count is only
     shown when the run also had conversations that worked.
     """
-    errors: List[str] = []
+    errors: list[str] = []
     for session in failed:
         error = str(session.get("llm_error") or "unknown error")
         if error not in errors:

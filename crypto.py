@@ -43,4 +43,4 @@ def session_signing_key() -> bytes:
     return _derive("admin-session")
 
 
-__all__ = ["encrypt", "decrypt", "session_signing_key", "SecretKeyMissing", "InvalidToken"]
+__all__ = ["InvalidToken", "SecretKeyMissing", "decrypt", "encrypt", "session_signing_key"]

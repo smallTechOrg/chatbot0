@@ -32,7 +32,7 @@ def update_contact_info(conn, session_id: str, name: str = None, email: str = No
             return bool(updated_row)
 
     except Exception as e:
-        print(f"[DATABASE ERROR] Failed to update contact for {session_id}: {str(e)}")
+        print(f"[DATABASE ERROR] Failed to update contact for {session_id}: {e!s}")
         raise
 
 
@@ -72,5 +72,5 @@ def update_chat_info(conn, session_id: str, status: str = None, remarks: str = N
             return bool(updated_row)
 
     except Exception as e:
-        print(f"[DATABASE ERROR] Failed to update lead for {session_id}: {str(e)}")
+        print(f"[DATABASE ERROR] Failed to update lead for {session_id}: {e!s}")
         raise

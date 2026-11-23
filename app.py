@@ -1,14 +1,14 @@
+from datetime import timedelta
+
 from flask import Flask, render_template
 from flask_cors import CORS
 from flask_smorest import Api
 
+import crypto
+from admin import admin_bp
 from api import register_blueprints
 from api.domains import domains_bp
-from admin import admin_bp
 from chatbot0 import chatbot0_bp, register_host_routing
-from datetime import timedelta
-
-import crypto
 from config import APP_ENV, CHATBOT0_SECRET_KEY, DEBUG, PORT, SCHEDULER_ENABLED, WERKZEUG_RUN_MAIN
 from db import init_db
 from scheduler import start_scheduler, stop_scheduler

@@ -12,9 +12,9 @@ This means **no SQL is executed during the test run itself**.
 Complementary pure-unit tests (no DB required at all) live in
 ``test_domains_service.py``.
 """
-import sys
 import os
-from datetime import datetime, timezone
+import sys
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -28,7 +28,6 @@ from domains.service import (
     InvalidWebsiteURLError,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -38,7 +37,7 @@ SAMPLE_DOMAIN = {
     "key": "EXAMPLE_COM",
     "address": "example.com",
     "parent_id": None,
-    "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+    "created_at": datetime(2024, 1, 1, tzinfo=UTC),
 }
 
 
