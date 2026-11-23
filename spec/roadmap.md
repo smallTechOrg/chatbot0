@@ -14,17 +14,31 @@ Order of the remaining work: **Q (quality) → R2 (frontend) → Phase 3 (multi-
 
 ## Ground rules for autonomous work
 
-- **Branch:** keep working on `feature/whatsapp-bot-20261123-2222-v0.1` (PR #86 → `main`).
-  The owner chose to fold the restructure into this PR. Commit per slice, push after
-  every green gate, and keep the PR body current (what's done, how to test, deferred).
-- **Never** merge to `main`, deploy production, edit production GitHub variables or secrets,
-  rotate `CHATBOT0_SECRET_KEY`, or delete data.
-- **Staging is fine.** Merge the feature branch into `staging` and push it (that
-  auto-deploys `zero-sales-agent-staging`) after each phase passes locally, then smoke-test
-  the staging URL with curl. Staging shares the production Cloud SQL instance but uses
-  its own database (`staging_chat_db`), so schema changes there are expected.
-- **zer0-frontend-web:** make the changes on a branch and open a PR. **Do not merge it.**
-  That repo deploys zer0.smalltech.in from `main`, and live customer widgets load from it.
+- **Branch and PRs (updated by the owner after PR #86 merged):** one PR per slice, from a
+  branch `feature/r2-<slice>-<YYYYMMDD>` (or `feature/p3-<slice>-...`) cut from `origin/main`.
+  Commit small and often, push after every green step. Per slice: run the gates, open a PR
+  into `main`, merge it yourself once its CI is green. Then merge `main` into `staging`,
+  push, wait for the deploy and smoke-test the staging URL. Merging to `main` deploys
+  production: watch the run (`gh run watch <id> --exit-status`), then smoke-test prod
+  (https://zero-sales-agent-a23rjysfbq-uc.a.run.app and https://chatbot0.smalltech.in):
+  `/health`, the pages the slice added, and `/chat` for example.com.
+- **Rollback:** if prod health or smoke fails, immediately
+  `gcloud run services update-traffic zero-sales-agent --region us-central1 --project ai-agent-boilerplate0 --to-revisions=<previous good revision>=100`
+  (`gcloud run revisions list` for the latest good one; before #86 it was
+  `zero-sales-agent-00027-wur`), then fix forward in a new PR and say so in NOTES.md.
+  Never leave prod broken.
+- **Still forbidden:** rotating or deleting secrets, force-pushing `main`, deleting data,
+  editing the zer0-frontend-web `main` branch directly. The zer0-frontend-web PR (R2 slice 5)
+  may be merged only after production serves `/embed.js` and `/embed/` from chatbot0 (verify
+  with curl) AND the stub loader was tested against a real page load of the old
+  `zer0.smalltech.in/embed.js` equivalent (same `data-*` attributes) on staging or local.
+- **Phase 3 cutover** is the one step with customer impact: ship Phase 3 slices behind safe
+  defaults first, and do the final lock-down PR last, after the new dashboard is deployed
+  and verified on prod. In that release you may run
+  `gh variable set DASHBOARD_URL --env production --body https://chatbot0.smalltech.in/dashboard/`
+  (and the staging equivalent with the staging URL); state it in the PR body.
+- **Usage gate:** if a tool call is denied with a usage message, stop, write a short state
+  summary (done / in progress / next) to NOTES.md if a tool is still allowed, and end.
 - **Gates:** run `venv/bin/python -m pytest -q test` (local Postgres:
   `DATABASE_URL=postgresql://$(whoami)@localhost:5432/ GROQ_API_KEY=dummy`). Run `ruff`
   on changed Python files. Run `npm run build` in `frontend/`. Do a local gunicorn boot
