@@ -22,7 +22,7 @@ class SecretKeyMissing(RuntimeError):
 
 def _derive(purpose: str) -> bytes:
     if not config.CHATBOT0_SECRET_KEY:
-        raise SecretKeyMissing("CHATBOT0_SECRET_KEY is not set (see code/.env.example)")
+        raise SecretKeyMissing("CHATBOT0_SECRET_KEY is not set (see .env.example)")
     return hashlib.sha256(f"chatbot0:{purpose}:{config.CHATBOT0_SECRET_KEY}".encode()).digest()
 
 

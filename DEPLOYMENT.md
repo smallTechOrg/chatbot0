@@ -25,7 +25,7 @@ talking to the shared PostgreSQL. GitHub Actions builds and deploys it.
 `APP_ENV`, `DB_NAME` and `DASHBOARD_URL` are variables of the GitHub
 environment and have no default: the deploy stops before building if one is
 unset, and the app does not start without them. Locally they go in
-`code/.env` (`APP_ENV=local`, `DB_NAME=chatdb`). Slack messages from staging
+`.env` (`APP_ENV=local`, `DB_NAME=chatdb`). Slack messages from staging
 and local runs start with `[Staging]` / `[Local]`; production has no marker.
 
 **Flow** (`.github/workflows/deploy.yml`), on every push to `staging` or `main`:
@@ -69,7 +69,7 @@ You can re-run a deploy by hand: Actions → *Deploy to Cloud Run* → *Run work
 - **Plain settings** (`APP_ENV`, `DB_NAME`, `DASHBOARD_URL`, `SCHEDULER_ENABLED=false`, the job auth
   settings, `GROQ_MODEL_NAME`, ...) are written by the *Write service
   environment* step of the workflow. Every setting and its default is
-  declared in `code/config.py`; `code/.env.example` lists them.
+  declared in `config.py`; `.env.example` lists them.
 - **Sizing**: 1 vCPU, 1 GiB, 8 concurrent requests per instance (= gunicorn's
   8 threads; `CLOUD_RUN_CONCURRENCY` to change it), 900s request timeout. Instances kept warm come from the
   environment's `CLOUD_RUN_MIN_INSTANCES`; both are `0`, so the first request
@@ -153,7 +153,7 @@ Cloud Scheduler ──(hourly, OIDC token)──▶ POST /jobs/periodic-summary 
   match, and fails if it cannot. Pausing or resuming by hand in the console
   is undone by the next deploy.
 - **Auth**: the service is public (the chat widget calls it from browsers), so
-  the endpoint checks the token itself (`code/api/jobs.py`): a Google-signed
+  the endpoint checks the token itself (`api/jobs.py`): a Google-signed
   OIDC token, audience `JOBS_OIDC_AUDIENCE` (`<service>-jobs`), email in
   `JOBS_ALLOWED_INVOKERS` (`zero-scheduler@`). Anything else gets 401.
   With either setting unset, every call is refused.
@@ -293,8 +293,8 @@ gcloud logging read 'resource.type="cloud_run_revision"
 ```
 
 **Connection pool settings.** Every environment-driven setting in this app is
-declared in `code/config.py` with its default; `.env` carries values only. See
-`code/.env.example` for the full list. The ones that matter most:
+declared in `config.py` with its default; `.env` carries values only. See
+`.env.example` for the full list. The ones that matter most:
 
 | Variable | Default | Purpose |
 |---|---|---|
