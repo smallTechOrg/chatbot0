@@ -1,0 +1,221 @@
+"""
+Every setting this app reads from the environment is declared here.
+
+Nothing else calls ``os.getenv``. Modules import the name they need from this
+module, so there is one place to see what is configurable, what its default is,
+and what belongs in ``.env`` -- which carries values only, never definitions.
+"""
+
+import os
+import re
+from enum import Enum
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def _required(name: str) -> str:
+    """
+    A setting with no default: .env sets it locally, and a deploy sets it from
+    its GitHub environment. Startup stops when it is missing, instead of
+    guessing which deployment this is.
+    """
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(f"{name} is not set (see .env.example)")
+    return value
+
+
+# ---------------------------------------------------------------------------
+# Environment
+# ---------------------------------------------------------------------------
+# Which deployment this is: production, staging or local.
+APP_ENV = _required("APP_ENV").lower()
+if APP_ENV not in ("production", "staging", "local"):
+    raise RuntimeError(f"APP_ENV={APP_ENV!r} is not one of production, staging, local")
+
+
+def environment_label():
+    """
+    "Staging" or "Local" for a non-production deployment, None for production.
+    Used to mark Slack messages.
+    """
+    return None if APP_ENV == "production" else APP_ENV.capitalize()
+
+
+# ---------------------------------------------------------------------------
+# Flask
+# ---------------------------------------------------------------------------
+DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+# Only used by `python app.py`. Cloud Run runs gunicorn on $PORT (see the
+# Dockerfile).
+PORT = int(os.getenv("PORT", "5001"))
+
+# Set by Werkzeug in the process that serves requests when the debug reloader
+# is on. The watcher parent does not have it. See the __main__ block in app.py.
+WERKZEUG_RUN_MAIN = os.getenv("WERKZEUG_RUN_MAIN") == "true"
+
+# ---------------------------------------------------------------------------
+# LLM (Groq)
+# ---------------------------------------------------------------------------
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_MODEL_NAME = os.environ.get("GROQ_MODEL_NAME", "openai/gpt-oss-120b")  # default if not set
+GROQ_BACKUP_MODEL_NAME = os.environ.get("GROQ_BACKUP_MODEL_NAME")
+
+# ---------------------------------------------------------------------------
+# Chat
+# ---------------------------------------------------------------------------
+max_input_length = int(os.getenv("MAX_INPUT_LENGTH", "10000"))
+DEFAULT_DOMAIN = os.getenv("DEFAULT_DOMAIN", "COMMON")
+
+# ---------------------------------------------------------------------------
+# Secrets for stored credentials and the admin page
+# ---------------------------------------------------------------------------
+# Encrypts the WhatsApp tokens kept in the database and signs the admin login
+# cookie. Changing it makes stored tokens unreadable: they must be entered
+# again. Unset: the admin page and the WhatsApp webhooks are off.
+CHATBOT0_SECRET_KEY = os.getenv("CHATBOT0_SECRET_KEY", "").strip()
+# Password of /chatbot0/admin/. Unset: nobody can sign in.
+CHATBOT0_ADMIN_PASSWORD = os.getenv("CHATBOT0_ADMIN_PASSWORD", "").strip()
+
+# ---------------------------------------------------------------------------
+# WhatsApp (Cloud API, see whatsapp/)
+# ---------------------------------------------------------------------------
+# Numbers, tokens and app secrets are per connection, in the database (added on
+# the admin page), not here.
+WHATSAPP_GRAPH_VERSION = os.getenv("WHATSAPP_GRAPH_VERSION", "v25.0").strip()
+# Seconds to wait for one Graph API call.
+WHATSAPP_TIMEOUT = float(os.getenv("WHATSAPP_TIMEOUT", "10"))
+# Public base URL shown for webhook URLs on the admin page. Unset: the URL the
+# page was requested on.
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+
+# ---------------------------------------------------------------------------
+# Slack (periodic summary)
+# ---------------------------------------------------------------------------
+# Incoming webhook for the channel that receives the periodic chat summary.
+# Unset: the summary job runs and saves to the database, and skips Slack.
+SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
+# Seconds to wait for one webhook POST.
+SLACK_TIMEOUT = float(os.getenv("SLACK_TIMEOUT", "10"))
+# The dashboard the Slack message header links to.
+DASHBOARD_URL = _required("DASHBOARD_URL")
+# How many days back the summary job looks for sessions without a summary.
+# Only a cap on retries: a session is summarised once and then left alone, so
+# the first run after a long outage does not go through the whole history.
+SUMMARY_WINDOW_DAYS = int(os.getenv("SUMMARY_WINDOW_DAYS", "7"))
+
+# ---------------------------------------------------------------------------
+# Scheduler (see summary/scheduler.py)
+# ---------------------------------------------------------------------------
+# When the periodic summary job runs, as a five-field cron pattern
+# (minute hour day month weekday). Default: at the start of every hour.
+PERIODIC_SUMMARY_CRON = os.getenv("PERIODIC_SUMMARY_CRON", "0 * * * *")
+# Timezone the pattern is read in. Without this a server running in UTC
+# would fire at the wrong local time.
+PERIODIC_SUMMARY_TIMEZONE = os.getenv("PERIODIC_SUMMARY_TIMEZONE", "Asia/Kolkata")
+# Run the job on the in-process scheduler. Keep it on for local runs. Turn it
+# off on Cloud Run: an instance gets CPU only while it serves a
+# request and can be stopped at any time, so a background timer there is not
+# reliable. Cloud Scheduler calls POST /jobs/periodic-summary instead.
+SCHEDULER_ENABLED = os.getenv("SCHEDULER_ENABLED", "true").lower() == "true"
+
+# ---------------------------------------------------------------------------
+# Job endpoints (see api/jobs.py)
+# ---------------------------------------------------------------------------
+# A job call must carry a Google-signed OIDC token with this audience, issued
+# to one of the service accounts in JOBS_ALLOWED_INVOKERS (comma-separated).
+# Leave either unset and every job call is refused.
+JOBS_OIDC_AUDIENCE = os.getenv("JOBS_OIDC_AUDIENCE", "").strip()
+JOBS_ALLOWED_INVOKERS = frozenset(
+    e.strip().lower() for e in os.getenv("JOBS_ALLOWED_INVOKERS", "").split(",") if e.strip()
+)
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+# The database on the server in DATABASE_URL, which must end with a slash.
+db_name = _required("DB_NAME")
+table_name = os.getenv("DB_TABLE_NAME", "chat_table")
+DATABASE_URL = _required("DATABASE_URL") + db_name
+
+
+def _redact_password(url: str) -> str:
+    """The URL with its password replaced, for logs."""
+    return re.sub(r"(://[^:/@]+:)[^/]*@", r"\1***@", url)
+
+
+print("Connecting to:", _redact_password(DATABASE_URL))
+
+# ---------------------------------------------------------------------------
+# Database connection pool (see core/db_pool.py)
+# ---------------------------------------------------------------------------
+
+# The database is a small shared instance. Keep the pool small. Do not set the
+# maximum to 1: one slow query then blocks all requests.
+DB_POOL_MIN_SIZE = int(os.getenv("DB_POOL_MIN_SIZE", "1"))
+DB_POOL_MAX_SIZE = int(os.getenv("DB_POOL_MAX_SIZE", "2"))
+
+# Seconds that one attempt waits for a connection. The pool retries the connect
+# in this time, so a request can wait for a database restart.
+DB_POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "5"))
+
+# Replace old connections. A firewall or the server can close one without
+# telling the client.
+DB_POOL_MAX_IDLE = float(os.getenv("DB_POOL_MAX_IDLE", "300"))
+DB_POOL_MAX_LIFETIME = float(os.getenv("DB_POOL_MAX_LIFETIME", "3600"))
+
+DB_CONNECT_TIMEOUT = int(os.getenv("DB_CONNECT_TIMEOUT", "10"))
+
+# Maximum time for one query. A busy database can accept a connection and then
+# not answer. Without this limit the request waits forever.
+DB_STATEMENT_TIMEOUT_MS = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "10000"))
+
+# Maximum time to wait for a lock. Another process can hold a lock during a
+# migration. Fail before the statement timeout.
+DB_LOCK_TIMEOUT_MS = int(os.getenv("DB_LOCK_TIMEOUT_MS", "3000"))
+
+# Close a transaction that stays open. get_connection usually does this.
+DB_IDLE_TX_TIMEOUT_MS = int(os.getenv("DB_IDLE_TX_TIMEOUT_MS", "30000"))
+
+# Find a server that stopped to answer. The server applies the statement
+# timeout, so it cannot help here. Linux applies tcp_user_timeout. Windows
+# ignores it.
+DB_TCP_USER_TIMEOUT_MS = int(os.getenv("DB_TCP_USER_TIMEOUT_MS", "20000"))
+DB_KEEPALIVES_IDLE = int(os.getenv("DB_KEEPALIVES_IDLE", "10"))
+DB_KEEPALIVES_INTERVAL = int(os.getenv("DB_KEEPALIVES_INTERVAL", "5"))
+DB_KEEPALIVES_COUNT = int(os.getenv("DB_KEEPALIVES_COUNT", "3"))
+
+# Maximum time the pool waits between reconnect attempts. The psycopg default
+# is 300s, which keeps the app down after the database comes back.
+DB_RECONNECT_TIMEOUT = float(os.getenv("DB_RECONNECT_TIMEOUT", "10"))
+
+# Retries for connection failures. The longest wait is approximately
+# DB_RETRY_ATTEMPTS x DB_POOL_TIMEOUT plus the delays.
+DB_RETRY_ATTEMPTS = int(os.getenv("DB_RETRY_ATTEMPTS", "3"))
+DB_RETRY_BASE_DELAY = float(os.getenv("DB_RETRY_BASE_DELAY", "0.5"))
+DB_RETRY_MAX_DELAY = float(os.getenv("DB_RETRY_MAX_DELAY", "4"))
+
+# Budget for the /health probe. One attempt.
+DB_HEALTH_TIMEOUT = float(os.getenv("DB_HEALTH_TIMEOUT", str(DB_POOL_TIMEOUT)))
+
+# Shows in pg_stat_activity. It identifies this app on the shared server.
+DB_APPLICATION_NAME = os.getenv("DB_APPLICATION_NAME", "zero-sales-agent")
+
+# Seconds that startup waits for the schema, then the number of retries.
+DB_STARTUP_WAIT = float(os.getenv("DB_STARTUP_WAIT", "5"))
+DB_BOOTSTRAP_ATTEMPTS = int(os.getenv("DB_BOOTSTRAP_ATTEMPTS", "600"))
+
+
+class agent_type(str, Enum):
+    SALES = "sales"
+    GENERIC = "generic"
+
+
+# Allowed statuses in dashboard
+class status_type(str, Enum):
+    OPEN = "OPEN"
+    CLOSED = "CLOSED"
+    QUALIFYING = "QUALIFYING"

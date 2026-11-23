@@ -9,11 +9,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY code/requirements.txt .
+COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # The app reads prompts/, templates/ and static/ relative to this directory.
-COPY code/ .
+# .dockerignore keeps tests, docs, scripts and local files out.
+COPY . .
 
 # Run as an unprivileged user.
 RUN useradd --system --uid 10001 app && chown -R app /app

@@ -1,0 +1,2 @@
+{%- set labels = {"active": "Active", "pending": "Waiting for first message", "needs_attention": "Needs attention"} -%}
+<span class="badge {{ c.status }}">{{ labels.get(c.status, c.status) }}</span>

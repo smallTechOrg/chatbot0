@@ -59,14 +59,14 @@ python3 --version
 
 
 - Go to [Groq](https://console.groq.com/keys) and create API Key
-- Put your Groq API key in `code/.env` file
+- Put your Groq API key in `.env` file
 
 ---
 ### Setup PostgreSQL
 
 
 - Install and setup PostgreSQL in you local
-- Adjust your username and password in `code/.env` file
+- Adjust your username and password in `.env` file
 
 ## Getting Started
 
@@ -112,7 +112,6 @@ source venv/bin/activate
 After activating your virtual environment, install dependencies by
 
 ```bash
-cd code
 pip install -r requirements.txt
 ```
 
@@ -137,7 +136,6 @@ DATABASE_URL=postgresql://username:password@localhost:5432/
 If virtual environment is activated and dependencies are installed then run chatbot by:
 
 ```bash
-cd code
 python app.py
 ```
 Now visit http://127.0.0.1:5000/ in your browser.
@@ -146,35 +144,66 @@ For newer APIs visit http://127.0.0.1:5001/api/docs.
 ## chatbot0 public pages
 
 The marketing pages for **chatbot0** (the chat agent this backend powers) are
-rendered server-side by the `chatbot0` blueprint (`code/chatbot0/`), under the
+rendered server-side by the `chatbot0` blueprint (`chatbot0/`), under the
 `/chatbot0/` prefix, because `/` is the legacy Swagger UI:
 
 | Path | Page |
 |---|---|
 | `/chatbot0/` | Landing page |
-| `/chatbot0/pricing` | Pricing (plans live in `code/chatbot0/content.py`) |
+| `/chatbot0/pricing` | Pricing (plans live in `chatbot0/content.py`) |
 | `/chatbot0/robots.txt`, `/chatbot0/sitemap.xml` | SEO files for chatbot0.smalltech.in |
-| `/chatbot0/static/...` | CSS, favicons, logo (`code/static/chatbot0/`) |
+| `/chatbot0/static/...` | CSS, favicons, logo (`static/chatbot0/`) |
 
-Templates are in `code/templates/chatbot0/`. Links in them are relative, so the
+Templates are in `templates/chatbot0/`. Links in them are relative, so the
 same pages work at the root of chatbot0.smalltech.in once that host is mapped
 onto `/chatbot0/`. Canonical and Open Graph URLs always use
 https://chatbot0.smalltech.in. The pages take no input and never touch the
 database or the LLM.
+
+## Code layout
+
+```
+app.py          create_app(): wires blueprints, database bootstrap, scheduler
+core/           config (every env setting), db_pool, schema (table bootstrap), crypto, paths
+chat/           the chat engine (engine, history, prompts, prompt_store, lead_capture, contact_validation)
+leads/          lead queries and updates (repository)
+summary/        periodic summary, Slack messages, scheduler
+domains/        domains resource (schemas, service, repository)
+whatsapp/       WhatsApp Cloud API (client, formatting, repository, service)
+admin/          admin pages (to be replaced by the Next.js app)
+api/            HTTP only: parse the request, call the code above, shape the response
+test/           pytest suite (needs a local PostgreSQL)
+```
+
+## WhatsApp
+
+chatbot0 also answers on WhatsApp (Meta Cloud API), with the same prompts,
+history, lead capture and Slack summaries as the web widget; WhatsApp chats are
+tagged `channel = whatsapp` in `chat_info`. Replies are pull-only: the customer
+writes first.
+
+1. Set `CHATBOT0_SECRET_KEY` and `CHATBOT0_ADMIN_PASSWORD` in `.env`.
+2. Sign in at `/chatbot0/admin/` and connect a number (phone number ID, domain,
+   access token, app secret).
+3. Paste the shown webhook URL and verify token into the Meta app (WhatsApp >
+   Configuration), subscribe to `messages`, and message the number.
+
+Code: `whatsapp/` (client, formatting, repository, service),
+`api/whatsapp.py` (webhook), `admin/` (admin pages).
 
 ## Test Flask APIs 
 
 If flask is rendered successfully, then test APIs by:
 
 ```bash
-cd code/test
+cd test
 pytest --html=test_report.html --self-contained-html -v
 ```
 
 
 ## For Linting
 
-Using ruff (example inside `code/`)
+Using ruff (example inside ``)
 ```
 ruff check app.py --fix
 ```
