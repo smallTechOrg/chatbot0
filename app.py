@@ -10,7 +10,6 @@ from flask_smorest import Api
 from admin import admin_bp
 from api import register_blueprints
 from api.domains import domains_bp
-from chatbot0 import chatbot0_bp, register_host_routing
 from core import crypto
 from core.config import APP_ENV, CHATBOT0_SECRET_KEY, DEBUG, PORT, SCHEDULER_ENABLED, WERKZEUG_RUN_MAIN
 from core.logging import configure_logging
@@ -51,11 +50,6 @@ def create_app() -> Flask:
 
     # -- Existing blueprints (health, chat, prompts, legacy swagger UI) --------
     register_blueprints(flask_app)
-
-    # -- chatbot0 public pages (SMA-8), server-rendered under /chatbot0/ ------
-    # Replaced by the Next.js frontend (web/); removed once those pages are ported.
-    flask_app.register_blueprint(chatbot0_bp)
-    register_host_routing(flask_app)
 
     # -- Admin pages (/chatbot0/admin/) ---------------------------------------
     # The login cookie is signed with a key derived from CHATBOT0_SECRET_KEY.

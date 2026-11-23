@@ -36,3 +36,16 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   to flask-smorest's handler so API errors stay JSON.
 - **Process.** The owner merged PR #86 while R2 slice 1 was in progress; the slice was moved
   onto its own branch from `origin/main` (cherry-pick) and the rules in spec/roadmap.md updated.
+- **`useSearchParams` empties the static HTML.** Symptom: pytest found no industry cards in the
+  exported `/industries/` page. Cause: a client component reading the query bails out to client
+  rendering, so crawlers saw an empty page. Fix: pure `IndustriesView` rendered server-side as the
+  `<Suspense>` fallback, and a small client wrapper that adds the highlight. Lesson: assert on the
+  exported HTML, not just on components.
+- **React inserts `<!-- -->` between adjacent text nodes**, so `$4<span>` is `$<!-- -->4<span>` in the
+  export. Export tests strip the separators before matching.
+- **Canonical URLs get a trailing slash** from Next metadata when `trailingSlash: true`. The
+  canonical, og:url and sitemap now all end in `/` (both forms serve 200, no redirect).
+- **Slices that change what customers copy must ship together.** The sign-up snippet cannot point at
+  chatbot0's `/embed.js` before slice 4 serves it, so slice 3 keeps the zer0 host until then.
+- **PRs run no CI.** deploy.yml triggers on push to main/staging only, so a PR shows "no checks".
+  A slice is gated by pushing the branch merge to `staging` first.

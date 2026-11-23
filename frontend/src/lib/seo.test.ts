@@ -8,9 +8,9 @@ describe("pageMetadata", () => {
     expect(meta.title).toEqual({ absolute: "Pricing, chatbot0" });
   });
 
-  it("points the canonical and og:url at chatbot0.smalltech.in without a trailing slash", () => {
-    expect(meta.alternates?.canonical).toBe("https://chatbot0.smalltech.in/pricing");
-    expect(meta.openGraph?.url).toBe("https://chatbot0.smalltech.in/pricing");
+  it("points the canonical and og:url at chatbot0.smalltech.in with a trailing slash", () => {
+    expect(meta.alternates?.canonical).toBe("https://chatbot0.smalltech.in/pricing/");
+    expect(meta.openGraph?.url).toBe("https://chatbot0.smalltech.in/pricing/");
   });
 
   it("keeps the landing page canonical at the root", () => {
