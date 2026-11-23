@@ -7,15 +7,10 @@ Graph API are stubbed; connections live in the test database.
 import hashlib
 import hmac
 import json
-import os
-import sys
 import uuid
 
 import pytest
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from app import app as flask_app
 from core import config, crypto
 from core.db_pool import get_connection
 from whatsapp import repository, service
@@ -31,11 +26,6 @@ DOMAIN = "WATEST"
 @pytest.fixture(autouse=True)
 def secret_key(monkeypatch):
     monkeypatch.setattr(config, "CHATBOT0_SECRET_KEY", "unit-test-secret-key")
-
-
-@pytest.fixture
-def client():
-    return flask_app.test_client()
 
 
 def _sql(query, params=()):

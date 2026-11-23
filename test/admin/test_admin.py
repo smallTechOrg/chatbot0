@@ -1,13 +1,9 @@
 """Admin pages: sign-in, CSRF, and the WhatsApp connection flows (Graph API stubbed)."""
 
-import os
 import re
-import sys
 import uuid
 
 import pytest
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import admin
 from app import app as flask_app
@@ -29,11 +25,6 @@ def configured(monkeypatch):
         "check_number",
         lambda pnid, token: GraphResult(True, {"display_phone_number": "+1 555 0100", "verified_name": "Test Biz"}),
     )
-
-
-@pytest.fixture
-def client():
-    return flask_app.test_client()
 
 
 def csrf(client, path):

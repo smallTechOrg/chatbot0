@@ -13,14 +13,10 @@ Complementary pure-unit tests (no DB required at all) live in
 ``test_domains_service.py``.
 """
 
-import os
-import sys
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app import app as flask_app
 from domains.service import (

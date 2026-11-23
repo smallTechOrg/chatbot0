@@ -12,16 +12,11 @@ production. They assert on the results only lightly; the point is that the SQL
 executes and touches the columns it claims to.
 """
 
-import os
-import sys
 import uuid
 
 import pytest
-from psycopg.rows import dict_row
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from psycopg import sql
+from psycopg.rows import dict_row
 
 from core import config, db_pool
 

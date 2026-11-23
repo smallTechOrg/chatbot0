@@ -12,16 +12,12 @@ These cover the two failures that prompted it:
 Like the other tests in this project, these need a live database.
 """
 
-import os
-import sys
 import threading
 import uuid
 from unittest.mock import patch
 
 import psycopg
 import pytest
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core import config, db_pool
 from core.config import DATABASE_URL

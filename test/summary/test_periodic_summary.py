@@ -3,15 +3,10 @@ Tests for the periodic summary chain against the real schema.
 The LLM call is stubbed, so no Groq key is needed.
 """
 
-import os
-import sys
 import uuid
 from datetime import timedelta
 
 import pytest
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from psycopg import sql
 from psycopg.rows import dict_row
 

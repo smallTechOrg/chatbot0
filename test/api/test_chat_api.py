@@ -12,16 +12,12 @@ Covers three fixes:
    has to come back as 415, not 500.
 """
 
-import os
-import sys
 import uuid
 from unittest.mock import patch
 
 import psycopg
 import pytest
 from psycopg.rows import dict_row
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from core import db_pool
 

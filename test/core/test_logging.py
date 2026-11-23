@@ -7,7 +7,7 @@ from pathlib import Path
 
 from core.logging import configure_logging
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 # core/config.py prints one startup line before logging exists; the legacy chatbot0/ package goes with the Next.js move.
 ALLOWED = {"core/config.py", "chatbot0/__init__.py"}
 

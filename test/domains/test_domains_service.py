@@ -10,15 +10,11 @@ The ``DomainRepository`` is replaced by a ``MagicMock`` so every test is fast
 and deterministic.
 """
 
-import os
-import sys
 from unittest.mock import MagicMock
 
 import pytest
 
 # Ensure the project root is on the path when running pytest from outside /code.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from domains.service import (
     DomainAlreadyExistsError,
     DomainService,

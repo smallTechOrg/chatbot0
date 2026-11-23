@@ -4,13 +4,9 @@ Cloud Run. Token verification and periodic_summary() are stubbed; the
 advisory lock runs against the test database.
 """
 
-import os
-import sys
 import threading
 
 import pytest
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from api import jobs
 from app import app as flask_app
@@ -31,11 +27,6 @@ FAKE_RESULT = {
     "slack": {"sent": 1},
     "sessions": [{"session_id": "s1", "email": "visitor@example.com"}],
 }
-
-
-@pytest.fixture
-def client():
-    return flask_app.test_client()
 
 
 @pytest.fixture

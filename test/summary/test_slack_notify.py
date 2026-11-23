@@ -3,14 +3,10 @@ Tests for formatting a periodic_summary() result as a Slack message.
 The webhook POST is stubbed; nothing reaches Slack.
 """
 
-import os
-import sys
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import pytest
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from summary import slack
 

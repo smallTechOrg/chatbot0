@@ -9,7 +9,7 @@ import sys
 
 import pytest
 
-CODE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+CODE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, CODE_DIR)
 
 from core import config  # noqa: E402
