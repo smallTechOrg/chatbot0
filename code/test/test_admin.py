@@ -91,12 +91,27 @@ def test_connect_number_shows_webhook_and_hides_secrets(client, cleanup):
     assert "Test Biz" in page and repository.get_connection(conn_id)["status"] == "active"
 
 
+@pytest.mark.parametrize("pasted", [
+    "\u200e{}\u200f", "\u00a0{} ", "ID: {}", "Phone number ID: {}", "\ufeff{}\u200b", "{}\n",
+])
+def test_pasted_id_with_invisible_characters_is_accepted(client, cleanup, pasted):
+    token = login(client)
+    pnid = str(uuid.uuid4().int)[:16]
+    cleanup.append(pnid)
+    r = client.post("/chatbot0/admin/whatsapp", data={
+        "csrf": token, "phone_number_id": pasted.format(pnid), "domain_key": "COMMON",
+        "access_token": "\u200etok ", "app_secret": " sec\u00a0"})
+    assert r.status_code == 302, r.get_data(as_text=True)
+    full = repository.get_connection_by_number(pnid)
+    assert (full["access_token"], full["app_secret"]) == ("tok", "sec")
+
+
 def test_phone_number_instead_of_id_is_explained(client):
     token = login(client)
     r = client.post("/chatbot0/admin/whatsapp", data={
         "csrf": token, "phone_number_id": "+1 555 0100", "domain_key": "COMMON",
         "access_token": "x", "app_secret": "y"})
-    assert "numeric ID" in r.get_data(as_text=True)
+    assert "numeric ID" in r.get_data(as_text=True) and "Received 11 characters" in r.get_data(as_text=True)
 
 
 def test_test_message_outside_window_shows_hint(client, cleanup, monkeypatch):
