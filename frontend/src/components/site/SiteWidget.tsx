@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { SITE_URL, WIDGET_ORIGIN } from "@/content/site";
+import { SITE_URL, WIDGET_FRAME_PATH, WIDGET_ORIGIN } from "@/content/site";
 
 /** True on chatbot0's own host: the widget needs a `domains` row for the page's origin, and only that host has one. */
 export function widgetWanted(hostname: string): boolean {
@@ -15,7 +15,7 @@ export default function SiteWidget() {
     const script = document.createElement("script");
     script.src = `${WIDGET_ORIGIN}/embed.js`;
     script.defer = true;
-    script.dataset.chatUrl = `${WIDGET_ORIGIN}/embed/`;
+    script.dataset.chatUrl = `${WIDGET_ORIGIN}${WIDGET_FRAME_PATH}`;
     script.dataset.colour = "#1C1B18";
     script.dataset.tagline = "Talk to us";
     document.body.appendChild(script);
