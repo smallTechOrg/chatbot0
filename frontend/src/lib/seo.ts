@@ -13,9 +13,9 @@ export interface PageSeo {
 const OG_IMAGE = `${SITE_URL}/og-chatbot0.png`;
 const OG_ALT = "chatbot0, the AI chat agent for business websites, by smallTech";
 
-/** The canonical URL of a page: no trailing slash except for the root, as the pages have always been indexed. */
+/** The canonical URL of a page. It ends in a slash, like every URL of the export (`trailingSlash: true`). */
 export function canonicalUrl(path: string): string {
-  return SITE_URL + path;
+  return SITE_URL + (path.endsWith("/") ? path : `${path}/`);
 }
 
 export function pageMetadata({ path, title, description }: PageSeo): Metadata {

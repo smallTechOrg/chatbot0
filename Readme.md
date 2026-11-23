@@ -141,29 +141,33 @@ python app.py
 Now visit http://127.0.0.1:5000/ in your browser.
 For newer APIs visit http://127.0.0.1:5001/api/docs.
 
-## chatbot0 public pages
+## Frontend (`frontend/`)
 
-The marketing pages for **chatbot0** (the chat agent this backend powers) are
-rendered server-side by the `chatbot0` blueprint (`chatbot0/`), under the
-`/chatbot0/` prefix, because `/` is the legacy Swagger UI:
+Everything a person sees on chatbot0 (the marketing pages, sign-up, and later the
+dashboard) is a Next.js app in `frontend/` (App Router, TypeScript strict,
+Tailwind 4), built as a static export. Flask serves the export (`web/`) for any
+GET that no API route matched, at the root of every host; `/api/docs` is the
+OpenAPI UI and `/api/legacy-docs` the old Swagger UI. `/chatbot0/<page>` 301s
+to `/<page>`.
 
-| Path | Page |
-|---|---|
-| `/chatbot0/` | Landing page |
-| `/chatbot0/pricing` | Pricing (plans live in `chatbot0/content.py`) |
-| `/chatbot0/robots.txt`, `/chatbot0/sitemap.xml` | SEO files for chatbot0.smalltech.in |
-| `/chatbot0/static/...` | CSS, favicons, logo (`static/chatbot0/`) |
+```bash
+cd frontend
+npm ci
+npm run dev        # http://localhost:3001, API calls forwarded to Flask on :5001
+npm run build      # writes frontend/out, which Flask serves (FRONTEND_DIR overrides)
+npm test           # vitest;  npx tsc --noEmit  and  npm run lint  are CI checks too
+```
 
-Templates are in `templates/chatbot0/`. Links in them are relative, so the
-same pages work at the root of chatbot0.smalltech.in once that host is mapped
-onto `/chatbot0/`. Canonical and Open Graph URLs always use
-https://chatbot0.smalltech.in. The pages take no input and never touch the
-database or the LLM.
+Plans and industries live in `frontend/src/content/`, page styles in
+`frontend/src/styles/site.css`, and all calls to the API in `frontend/src/lib/api.ts`.
+The Docker image builds the frontend in a node stage and copies it to `/app/frontend_out`.
 
 ## Code layout
 
 ```
 app.py          create_app(): wires blueprints, database bootstrap, scheduler
+web/            serves the Next.js export (frontend/out) for paths no API route matched
+frontend/       the Next.js app
 core/           config (every env setting), db_pool, schema (table bootstrap), crypto, paths
 chat/           the chat engine (engine, history, prompts, prompt_store, lead_capture, contact_validation)
 leads/          lead queries and updates (repository)
