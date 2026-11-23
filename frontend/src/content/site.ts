@@ -6,12 +6,9 @@ export const CONTACT_EMAIL = "contact@smalltech.in";
 export const GITHUB_URL = "https://github.com/smallTechOrg";
 export const LINKEDIN_URL = "https://www.linkedin.com/company/madhyamakist";
 
-/**
- * Where the chat widget (embed.js and the embed frame) is served from. Still zer0 until slice 4 of R2
- * moves the widget into this app; then this becomes SITE_URL and the frame path "/embed/".
- */
-export const WIDGET_ORIGIN = ZER0_URL;
-export const WIDGET_FRAME_PATH = "/embed";
+/** Where the chat widget (embed.js and the /embed/ frame) is served from: this app. */
+export const WIDGET_ORIGIN = SITE_URL;
+export const WIDGET_FRAME_PATH = "/embed/";
 
 /** The widget colour the sign-up form starts with, and its preset swatches (the visitor's widget, not the page palette). */
 export const DEFAULT_WIDGET_COLOUR = "#219EBC";
