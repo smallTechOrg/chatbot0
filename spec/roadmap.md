@@ -10,6 +10,8 @@ Done so far (branch `feature/whatsapp-bot-20261123-2222-v0.1`, PR #86 → `main`
 - Phase 1: the WhatsApp channel (per-connection webhooks, encrypted credentials, Jinja admin page).
 - R1: `code/` moved to the repo root.
 
+Order of the remaining work: **Q (quality) → R2 (frontend) → Phase 3 (multi-tenant)**.
+
 ## Ground rules for autonomous work
 
 - **Branch:** keep working on `feature/whatsapp-bot-20261123-2222-v0.1` (PR #86 → `main`).
@@ -34,6 +36,92 @@ Done so far (branch `feature/whatsapp-bot-20261123-2222-v0.1`, PR #86 → `main`
 - **Stuck** (a test you can't get green after 3 honest attempts, or a decision this plan
   doesn't cover): stop, write the question at the top of the PR body under "Waiting on
   owner", and move on to the next independent slice.
+
+---
+
+## Q — Code structure and quality (do this **before** R2)
+
+**Goal:** a codebase the new work can follow. **No behaviour change**: the existing test
+suite is the safety net. Run it after every step, and fix forward.
+
+1. **Tooling first.**
+   - Add `pyproject.toml` with ruff config: `line-length = 120`,
+     `target-version = "py312"`, lint `select = ["E","F","I","B","UP","SIM","RUF"]`
+     (ignore only what is justified in a comment).
+   - Run `ruff check --fix` and `ruff format`, then fix the remaining errors by hand.
+     Today there are 27 (E701, F401, F811, F841).
+   - CI test job: add `ruff check .` and `ruff format --check .` before pytest.
+   - Commit the formatting on its own ("ruff format, no code change"), so review diffs stay
+     readable.
+2. **Package layout.** Move the flat root modules into packages. Fix the imports and the
+   tests' monkeypatch targets.
+   ```
+   app.py                 create_app() only; no route definitions (move /chat-ui into api/)
+   core/                  config.py, db_pool.py, schema.py (was db.py), crypto.py, llm.py, logging.py
+   chat/                  engine.py (llm_api), history.py, prompts.py (system_prompt + prompts_table),
+                          lead_capture.py (conversation_processor), contact_validation.py
+   leads/                 repository.py (leads.py + leads_update.py)
+   summary/               periodic.py (periodic_summary), slack.py (slack_notify), scheduler.py
+   domains/  whatsapp/    already packages; keep the layering
+   api/                   HTTP only: parse, call a service, shape the response. No SQL in api/.
+   ```
+   Later phases add `auth/`, `tenancy/` and `web/` in the same style. Layering rule:
+   `api → service → repository`. SQL lives only in repository modules (or `core/schema.py`).
+3. **One LLM factory.** `core/llm.py: get_chat_model()` replaces the three `ChatGroq(...)`
+   constructions (llm_api, conversation_processor, periodic_summary). The backup model
+   (`GROQ_BACKUP_MODEL_NAME`) is wired there via LangChain `.with_fallbacks()` when set.
+4. **Fix the fake-async lead capture.** `_process_conversation_async` blocks the reply,
+   because `with ThreadPoolExecutor(...)` waits on exit.
+   - Run contact detection **concurrently with** the reply LLM call, by submitting it
+     first and collecting it after. That keeps everything inside the request, which
+     Cloud Run needs because it throttles CPU after the response, while cutting reply
+     latency.
+   - Add a test that the reply doesn't wait for detection beyond the reply's own duration
+     (stub both LLM calls with sleeps).
+5. **Logging, not print.**
+   - `core/logging.py` configures `logging` once in `create_app`: one line per record,
+     level from `LOG_LEVEL` (default INFO), output to stdout for Cloud Logging.
+   - Replace all ~122 `print(` calls with `logger = logging.getLogger(__name__)`, at the
+     right level (`exception()` instead of `print(traceback.format_exc())`).
+   - Keep the existing `[TAG]` message prefixes so log searches still work.
+   - Never log secrets. Contact details (emails, phones) get logged at DEBUG only.
+6. **Dead code and hygiene.** Remove commented-out code (e.g. in `system_prompt.py`) and
+   unused functions. Fix the misleading comments. Add type hints on every public
+   function you touch. Remove the stale `deploy.md` if `DEPLOYMENT.md` covers it (check
+   first).
+7. **Tests.**
+   - Mirror the package layout under `test/`, and move shared fixtures (DB cleanup, LLM
+     stubs, signed WhatsApp payloads) into `test/conftest.py`.
+   - Keep every existing assertion. Count the tests before and after: the number must
+     not drop.
+
+**Standards for everything written in R2 and Phase 3 (reviewers will check):**
+- Python:
+  - type hints on public functions;
+  - no SQL outside repositories;
+  - no `print`;
+  - exceptions are caught at the API boundary only;
+  - a docstring on every module saying what it owns;
+  - functions under about 50 lines;
+  - each new behaviour gets a test in the same commit.
+- Frontend:
+  - TypeScript `strict`, with `tsc --noEmit` and `next lint` in CI;
+  - no `any`;
+  - data fetching only through `src/lib/api.ts`;
+  - components in `src/components/`, with page files kept thin;
+  - Vitest for `lib/` and non-trivial hooks (CI runs `npm test`);
+  - accessible markup (labels, focus states, keyboard use);
+  - no inline styles except dynamic colours.
+- Before each phase hand-off, run a review pass: re-read the diff of the whole phase as a
+  reviewer, using the `/code-review` skill if available, otherwise by hand. Fix what it
+  finds, and note anything deferred in the PR body.
+
+**Q gate:**
+- `ruff check` and `ruff format --check` clean; pytest green with the same or a higher
+  test count.
+- Local gunicorn boot + curl smoke test: `/health`, `/chat` with the stubbed key returns
+  a JSON error and not a crash, and the WhatsApp webhook handshake.
+- CI green on staging, and the staging smoke test passes.
 
 ---
 
@@ -316,7 +404,7 @@ WhatsApp outreach; billing and plan enforcement beyond the trial cap; per-tenant
 channels.
 
 ## Morning hand-off checklist (what the owner must do)
-1. Review PR #86 (WhatsApp + restructure + R2 + Phase 3). Merge it when happy; that
+1. Review PR #86 (WhatsApp + restructure + Q + R2 + Phase 3). Merge it when happy; that
    deploys production.
 2. Before or at that merge: set the production `DASHBOARD_URL` variable to
    `https://chatbot0.smalltech.in/dashboard/`.
