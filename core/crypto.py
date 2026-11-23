@@ -14,7 +14,7 @@ import hashlib
 
 from cryptography.fernet import Fernet, InvalidToken
 
-import config
+from core import config
 
 
 class SecretKeyMissing(RuntimeError):

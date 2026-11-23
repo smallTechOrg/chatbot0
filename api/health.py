@@ -2,8 +2,8 @@ import contextlib
 
 from flask import Blueprint, jsonify
 
-import config
-from db_pool import get_connection, get_pool
+from core import config
+from core.db_pool import get_connection, get_pool
 
 health_bp = Blueprint("health", __name__)
 

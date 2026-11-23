@@ -23,9 +23,8 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import config
-import db_pool
-from config import DATABASE_URL
+from core import config, db_pool
+from core.config import DATABASE_URL
 
 # ---------------------------------------------------------------------------
 # Helpers

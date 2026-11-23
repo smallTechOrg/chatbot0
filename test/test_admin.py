@@ -10,10 +10,9 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import admin
-import config
-import crypto
 from app import app as flask_app
-from db_pool import get_connection
+from core import config, crypto
+from core.db_pool import get_connection
 from whatsapp import repository
 from whatsapp.client import GraphResult
 

@@ -12,21 +12,21 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import slack_notify
+from summary import slack
 
 IST = ZoneInfo("Asia/Kolkata")
 RUN_AT = datetime(2026, 10, 7, 17, 0, tzinfo=IST)
 DASHBOARD = "https://zer0.smalltech.in/dashboard?h=test-secret"
 HEADER = f"<{DASHBOARD}|chatbot0 Summary - 7th Oct 2026 - 5 pm IST>"
 # The real function, before fixed_config replaces it.
-ENVIRONMENT_LABEL = slack_notify.config.environment_label
+ENVIRONMENT_LABEL = slack.config.environment_label
 
 
 @pytest.fixture(autouse=True)
 def fixed_config(monkeypatch):
-    monkeypatch.setattr(slack_notify.config, "PERIODIC_SUMMARY_TIMEZONE", "Asia/Kolkata")
-    monkeypatch.setattr(slack_notify.config, "DASHBOARD_URL", DASHBOARD)
-    monkeypatch.setattr(slack_notify.config, "environment_label", lambda: None)
+    monkeypatch.setattr(slack.config, "PERIODIC_SUMMARY_TIMEZONE", "Asia/Kolkata")
+    monkeypatch.setattr(slack.config, "DASHBOARD_URL", DASHBOARD)
+    monkeypatch.setattr(slack.config, "environment_label", lambda: None)
 
 
 def _session(i, **extra):
@@ -66,7 +66,7 @@ def posted(monkeypatch):
         calls.append({"url": url, "json": json, "timeout": timeout})
         return _Response()
 
-    monkeypatch.setattr(slack_notify.requests, "post", fake_post)
+    monkeypatch.setattr(slack.requests, "post", fake_post)
     return calls
 
 
@@ -84,7 +84,7 @@ class TestFormatTime:
         ],
     )
     def test_header_time(self, value, expected):
-        assert slack_notify.format_header_time(value) == expected
+        assert slack.format_header_time(value) == expected
 
     @pytest.mark.parametrize(
         "value, expected",
@@ -95,23 +95,23 @@ class TestFormatTime:
         ],
     )
     def test_line_time(self, value, expected):
-        assert slack_notify.format_line_time(value) == expected
+        assert slack.format_line_time(value) == expected
 
     def test_database_utc_timestamp_is_shown_in_ist(self):
         # 10:43 UTC is 4:13 pm in Kolkata.
         utc = datetime(2026, 10, 7, 10, 43, tzinfo=UTC)
-        assert slack_notify.format_line_time(utc) == "7th Oct, 4:13 pm"
+        assert slack.format_line_time(utc) == "7th Oct, 4:13 pm"
 
     def test_naive_timestamp_is_taken_as_display_timezone(self):
-        assert slack_notify.format_header_time(datetime(2026, 10, 7, 17, 0)) == "7th Oct 2026 - 5 pm IST"
+        assert slack.format_header_time(datetime(2026, 10, 7, 17, 0)) == "7th Oct 2026 - 5 pm IST"
 
 
 class TestBuildMessages:
     def test_no_sessions_gives_no_messages(self):
-        assert slack_notify.build_messages(_result([])) == []
+        assert slack.build_messages(_result([])) == []
 
     def test_exact_format(self):
-        [message] = slack_notify.build_messages(_result([_session(1), _session(2)]))
+        [message] = slack.build_messages(_result([_session(1), _session(2)]))
         assert message == {
             "username": "chatbot0-updates",
             "text": (
@@ -122,21 +122,21 @@ class TestBuildMessages:
         }
 
     def test_header_is_a_dashboard_link(self):
-        [message] = slack_notify.build_messages(_result([_session(1)]))
+        [message] = slack.build_messages(_result([_session(1)]))
         header = message["text"].split("\n")[0]
         assert header.startswith(f"<{DASHBOARD}|")
         assert header.endswith(">")
 
     def test_header_without_run_time(self):
         result = _result([_session(1)], run_at=None)
-        [message] = slack_notify.build_messages(result)
+        [message] = slack.build_messages(result)
         assert message["text"].startswith(f"<{DASHBOARD}|chatbot0 Summary>\n")
 
     def test_missing_name_is_unknown(self):
         blank = _session(1, name="   ")
         none = _session(2, name=None)
         no_lead = _session(3, name=None, domain=None)
-        [message] = slack_notify.build_messages(_result([blank, none, no_lead]))
+        [message] = slack.build_messages(_result([blank, none, no_lead]))
         lines = message["text"].split("\n")[1:]
         assert lines[0] == "7th Oct, 4:11 pm - SMALLTECH - Unknown - Summary 1."
         assert lines[1] == "7th Oct, 4:12 pm - SMALLTECH - Unknown - Summary 2."
@@ -145,11 +145,11 @@ class TestBuildMessages:
     def test_domain_key_is_upper_cased(self):
         s = _session(1)
         s["domain"] = "silverwave"
-        [message] = slack_notify.build_messages(_result([s]))
+        [message] = slack.build_messages(_result([s]))
         assert "7th Oct, 4:11 pm - SILVERWAVE - Lead 1 - Summary 1." in message["text"]
 
     def test_multiline_summary_is_flattened(self):
-        [message] = slack_notify.build_messages(_result([_session(1, summary="Line one.\nLine two.")]))
+        [message] = slack.build_messages(_result([_session(1, summary="Line one.\nLine two.")]))
         assert "7th Oct, 4:11 pm - SMALLTECH - Lead 1 - Line one. Line two." in message["text"]
 
     def test_failed_session_shows_the_error(self):
@@ -158,12 +158,12 @@ class TestBuildMessages:
         session = _session(1)
         del session["summary"]
         session["error"] = "db down"
-        [message] = slack_notify.build_messages(_result([session]))
+        [message] = slack.build_messages(_result([session]))
         assert "7th Oct, 4:11 pm - SMALLTECH - Lead 1 - summary failed (db down)" in message["text"]
 
     def test_silent_session_gets_no_line(self):
         silent = _session(2, silent=True, summary="Opened the chat but did not write anything.")
-        [message] = slack_notify.build_messages(_result([_session(1), silent]))
+        [message] = slack.build_messages(_result([_session(1), silent]))
         assert message == {
             "username": "chatbot0-updates",
             "text": f"{HEADER}\n7th Oct, 4:11 pm - SMALLTECH - Lead 1 - Summary 1.",
@@ -171,7 +171,7 @@ class TestBuildMessages:
 
     def test_only_silent_sessions_give_no_messages(self):
         silent = _session(1, silent=True, summary="Opened the chat but did not write anything.")
-        assert slack_notify.build_messages(_result([silent])) == []
+        assert slack.build_messages(_result([silent])) == []
 
     def test_silent_sessions_do_not_count_as_failures(self):
         # One silent, one LLM failure: every reportable session failed, so
@@ -180,7 +180,7 @@ class TestBuildMessages:
         bad = _session(2)
         del bad["summary"]
         bad["error"] = bad["llm_error"] = "rate_limit_exceeded"
-        [message] = slack_notify.build_messages(_result([silent, bad]))
+        [message] = slack.build_messages(_result([silent, bad]))
         assert message["text"] == (
             f"{HEADER}\nFailed to generate a summary. LLM calls failed with error: rate_limit_exceeded."
         )
@@ -191,7 +191,7 @@ class TestBuildMessages:
         session["error"] = "Error code: 429 - {...}"
         session["llm_error"] = "RESOURCE_EXHAUSTED"
         run_at = datetime(2026, 10, 7, 18, 0, tzinfo=IST)
-        [message] = slack_notify.build_messages(_result([session], run_at=run_at))
+        [message] = slack.build_messages(_result([session], run_at=run_at))
         assert message == {
             "username": "chatbot0-updates",
             "text": (
@@ -207,7 +207,7 @@ class TestBuildMessages:
         worse = _session(3)
         del worse["summary"]
         worse["error"] = worse["llm_error"] = "rate_limit_exceeded"
-        [message] = slack_notify.build_messages(_result([_session(1), bad, worse]))
+        [message] = slack.build_messages(_result([_session(1), bad, worse]))
         assert message["text"] == (
             f"{HEADER}\n"
             "7th Oct, 4:11 pm - SMALLTECH - Lead 1 - Summary 1.\n"
@@ -219,7 +219,7 @@ class TestBuildMessages:
         bad = _session(2)
         del bad["summary"]
         bad["error"] = bad["llm_error"] = "model_not_found"
-        [message] = slack_notify.build_messages(_result([_session(1), bad]))
+        [message] = slack.build_messages(_result([_session(1), bad]))
         assert message["text"].endswith(
             "Failed to generate a summary for 1 conversation. LLM calls failed with error: model_not_found."
         )
@@ -231,72 +231,72 @@ class TestBuildMessages:
             del s["summary"]
             s["error"] = s["llm_error"] = error
             sessions.append(s)
-        [message] = slack_notify.build_messages(_result(sessions))
+        [message] = slack.build_messages(_result(sessions))
         assert message["text"].endswith("LLM calls failed with error: rate_limit_exceeded; timeout.")
 
     def test_llm_error_text_is_escaped(self):
         s = _session(1)
         del s["summary"]
         s["error"] = s["llm_error"] = "<bad & worse>"
-        [message] = slack_notify.build_messages(_result([s]))
+        [message] = slack.build_messages(_result([s]))
         assert "&lt;bad &amp; worse&gt;" in message["text"]
 
     def test_missing_first_message_time(self):
         s = _session(1)
         del s["first_message"]
-        [message] = slack_notify.build_messages(_result([s]))
+        [message] = slack.build_messages(_result([s]))
         assert "unknown time - SMALLTECH - Lead 1 - Summary 1." in message["text"]
 
     def test_slack_markup_characters_are_escaped(self):
         s = _session(1, summary="Asked about <pricing> & plans.")
-        [message] = slack_notify.build_messages(_result([s]))
+        [message] = slack.build_messages(_result([s]))
         assert "Asked about &lt;pricing&gt; &amp; plans." in message["text"]
         # The header link itself must stay unescaped.
         assert message["text"].startswith(HEADER)
 
     def test_long_run_is_split_and_header_repeats(self):
         sessions = [_session(i, summary="x" * 2500) for i in range(20)]
-        messages = slack_notify.build_messages(_result(sessions))
+        messages = slack.build_messages(_result(sessions))
 
         assert len(messages) > 1
         for message in messages:
             assert message["text"].startswith(HEADER)
-            assert len(message["text"]) <= slack_notify.MESSAGE_LIMIT
+            assert len(message["text"]) <= slack.MESSAGE_LIMIT
         # Every conversation appears exactly once across the parts.
         lines = [line for m in messages for line in m["text"].split("\n")[1:]]
         assert len(lines) == 20
 
     def test_long_summary_is_clipped(self):
-        [message] = slack_notify.build_messages(_result([_session(1, summary="x" * 5000)]))
+        [message] = slack.build_messages(_result([_session(1, summary="x" * 5000)]))
         line = message["text"].split("\n")[1]
-        assert len(line) <= slack_notify.LINE_LIMIT
+        assert len(line) <= slack.LINE_LIMIT
 
 
 class TestSend:
     def test_skips_when_there_are_no_sessions(self, posted, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/abc")
-        outcome = slack_notify.send_summaries_to_slack(_result([]))
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/abc")
+        outcome = slack.send_summaries_to_slack(_result([]))
         assert outcome == {"sent": 0, "skipped": "no sessions"}
         assert posted == []
 
     def test_skips_when_only_silent_sessions(self, posted, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.com/x")
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.com/x")
         silent = _session(1, silent=True, summary="Opened the chat but did not write anything.")
-        outcome = slack_notify.send_summaries_to_slack(_result([silent]))
+        outcome = slack.send_summaries_to_slack(_result([silent]))
         assert outcome == {"sent": 0, "skipped": "nothing to report"}
         assert posted == []
 
     def test_skips_when_webhook_not_set(self, posted, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", None)
-        outcome = slack_notify.send_summaries_to_slack(_result([_session(1)]))
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", None)
+        outcome = slack.send_summaries_to_slack(_result([_session(1)]))
         assert outcome["sent"] == 0
         assert "skipped" in outcome
         assert posted == []
 
     def test_posts_the_message_to_the_webhook(self, posted, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/abc")
-        monkeypatch.setattr(slack_notify.config, "SLACK_TIMEOUT", 7.0)
-        outcome = slack_notify.send_summaries_to_slack(_result([_session(1), _session(2)]))
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/abc")
+        monkeypatch.setattr(slack.config, "SLACK_TIMEOUT", 7.0)
+        outcome = slack.send_summaries_to_slack(_result([_session(1), _session(2)]))
 
         assert outcome == {"sent": 1}
         assert len(posted) == 1
@@ -310,10 +310,10 @@ class TestSend:
             status_code = 400
             text = "invalid_payload"
 
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/abc")
-        monkeypatch.setattr(slack_notify.requests, "post", lambda *a, **k: _Bad())
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", "https://hooks.slack.test/abc")
+        monkeypatch.setattr(slack.requests, "post", lambda *a, **k: _Bad())
         with pytest.raises(RuntimeError, match="400"):
-            slack_notify.send_summaries_to_slack(_result([_session(1)]))
+            slack.send_summaries_to_slack(_result([_session(1)]))
 
 
 class TestEnvironmentMarker:
@@ -322,24 +322,24 @@ class TestEnvironmentMarker:
     @pytest.fixture(autouse=True)
     def real_label(self, monkeypatch):
         # fixed_config stubs the label out; these tests use the real one.
-        monkeypatch.setattr(slack_notify.config, "environment_label", ENVIRONMENT_LABEL)
+        monkeypatch.setattr(slack.config, "environment_label", ENVIRONMENT_LABEL)
 
     def test_production_has_no_marker(self, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "APP_ENV", "production")
-        [message] = slack_notify.build_messages(_result([_session(1)]))
+        monkeypatch.setattr(slack.config, "APP_ENV", "production")
+        [message] = slack.build_messages(_result([_session(1)]))
         assert message["text"].startswith(f"<{DASHBOARD}|chatbot0 Summary - 7th Oct 2026 - 5 pm IST>\n")
 
     @pytest.mark.parametrize("app_env, label", [("staging", "Staging"), ("local", "Local")])
     def test_non_production_is_marked_before_the_link(self, monkeypatch, app_env, label):
-        monkeypatch.setattr(slack_notify.config, "APP_ENV", app_env)
-        [message] = slack_notify.build_messages(_result([_session(1)]))
+        monkeypatch.setattr(slack.config, "APP_ENV", app_env)
+        [message] = slack.build_messages(_result([_session(1)]))
         assert message["text"].startswith(f"*[{label}]* <{DASHBOARD}|chatbot0 Summary - 7th Oct 2026 - 5 pm IST>\n")
 
     def test_every_part_of_a_split_run_carries_the_marker(self, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "APP_ENV", "staging")
-        monkeypatch.setattr(slack_notify, "MESSAGE_LIMIT", 200)
+        monkeypatch.setattr(slack.config, "APP_ENV", "staging")
+        monkeypatch.setattr(slack, "MESSAGE_LIMIT", 200)
         sessions = [_session(i, summary=f"Summary {i}. " + "x" * 80) for i in range(1, 5)]
-        messages = slack_notify.build_messages(_result(sessions))
+        messages = slack.build_messages(_result(sessions))
         assert len(messages) > 1
         assert all(m["text"].startswith("*[Staging]* <") for m in messages)
         assert all(m["username"] == "chatbot0-updates" for m in messages)
@@ -347,21 +347,21 @@ class TestEnvironmentMarker:
 
 class TestSignupMessage:
     def test_text_has_site_and_contact(self):
-        text = slack_notify.build_signup_text(
+        text = slack.build_signup_text(
             "acme.com", {"contact_name": "Anjali <A>", "email": "anjali@acme.com", "mobile": None}
         )
         assert text == "*New chatbot0 sign-up:* acme.com - Anjali &lt;A&gt; - anjali@acme.com"
 
     def test_text_without_contact(self):
-        assert slack_notify.build_signup_text("acme.com") == "*New chatbot0 sign-up:* acme.com - no contact details"
+        assert slack.build_signup_text("acme.com") == "*New chatbot0 sign-up:* acme.com - no contact details"
 
     def test_staging_is_marked(self, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "environment_label", lambda: "Staging")
-        assert slack_notify.build_signup_text("acme.com").startswith("*[Staging]* *New chatbot0 sign-up:*")
+        monkeypatch.setattr(slack.config, "environment_label", lambda: "Staging")
+        assert slack.build_signup_text("acme.com").startswith("*[Staging]* *New chatbot0 sign-up:*")
 
     def test_posts_one_message(self, monkeypatch, posted):
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.example/x")
-        assert slack_notify.notify_signup("acme.com", {"contact_name": "Anjali"}) is True
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", "https://hooks.example/x")
+        assert slack.notify_signup("acme.com", {"contact_name": "Anjali"}) is True
         assert len(posted) == 1
         assert posted[0]["json"] == {
             "username": "chatbot0-updates",
@@ -369,15 +369,15 @@ class TestSignupMessage:
         }
 
     def test_no_webhook_skips(self, monkeypatch, posted):
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", None)
-        assert slack_notify.notify_signup("acme.com") is False
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", None)
+        assert slack.notify_signup("acme.com") is False
         assert posted == []
 
     def test_slack_failure_never_raises(self, monkeypatch):
-        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.example/x")
+        monkeypatch.setattr(slack.config, "SLACK_WEBHOOK_URL", "https://hooks.example/x")
 
         def boom(*args, **kwargs):
             raise ConnectionError("slack down")
 
-        monkeypatch.setattr(slack_notify.requests, "post", boom)
-        assert slack_notify.notify_signup("acme.com") is False
+        monkeypatch.setattr(slack.requests, "post", boom)
+        assert slack.notify_signup("acme.com") is False

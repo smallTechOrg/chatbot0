@@ -5,7 +5,7 @@ connection from the pool for one query. The repository keeps no connection.
 
 from __future__ import annotations
 
-from db_pool import run_with_retry
+from core.db_pool import run_with_retry
 
 
 class DomainRepository:

@@ -12,9 +12,9 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import config
 from api import jobs
 from app import app as flask_app
+from core import config
 
 INVOKER = "zero-scheduler@example.iam.gserviceaccount.com"
 AUDIENCE = "zero-sales-agent-jobs"

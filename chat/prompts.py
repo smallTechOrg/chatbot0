@@ -1,4 +1,4 @@
-from db_pool import with_connection
+from core.db_pool import with_connection
 
 FORMATTING_INSTRUCTION = """
 

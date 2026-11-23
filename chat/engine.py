@@ -4,10 +4,10 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_groq import ChatGroq
 
-from config import GROQ_API_KEY, GROQ_MODEL_NAME
-from conversation_processor.conversation_processor import process_conversation
-from history import get_session_history
-from system_prompt import get_prompt
+from chat.history import get_session_history
+from chat.lead_capture import process_conversation
+from chat.prompts import get_prompt
+from core.config import GROQ_API_KEY, GROQ_MODEL_NAME
 
 
 def get_groq_response(input_text, session_id, request_type, domain):

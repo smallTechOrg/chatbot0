@@ -12,13 +12,13 @@ import pytest
 CODE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, CODE_DIR)
 
-import config  # noqa: E402
+from core import config  # noqa: E402
 
 
 def _load_config(code, **settings):
     """Run *code* after importing config in a fresh process with *settings*."""
     return subprocess.run(
-        [sys.executable, "-c", f"import config; {code}"],
+        [sys.executable, "-c", f"from core import config; {code}"],
         cwd=CODE_DIR,
         env={**os.environ, **settings},
         capture_output=True,

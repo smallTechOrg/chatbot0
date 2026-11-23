@@ -27,7 +27,7 @@ from domains import (
     InvalidWebsiteURLError,
 )
 from domains.schemas import CreateDomainRequest, DomainResponse
-from slack_notify import notify_signup
+from summary.slack import notify_signup
 
 domains_bp = Blueprint(
     "domains",

@@ -23,7 +23,7 @@ from psycopg.rows import dict_row
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import db_pool
+from core import db_pool
 
 ORIGIN = {"Origin": "http://example.com"}
 

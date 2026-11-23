@@ -20,9 +20,9 @@ from typing import Any
 import psycopg
 from psycopg_pool import ConnectionPool
 
-import config
+from core import config
 
-# Settings come from config.py. This module does not read the environment.
+# Settings come from core/config.py. This module does not read the environment.
 
 # Retry these. The server stopped, restarted, or the pool gave no connection.
 # All psycopg_pool errors are OperationalError subclasses. Do not retry a

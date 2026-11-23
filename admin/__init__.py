@@ -23,8 +23,8 @@ import unicodedata
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
-import config
-from db_pool import with_connection
+from core import config
+from core.db_pool import with_connection
 from whatsapp import repository
 from whatsapp.client import OUTSIDE_SERVICE_WINDOW, check_number, send_text
 

@@ -14,9 +14,9 @@ import traceback
 import uuid
 from collections.abc import Iterator
 
-from config import agent_type
-from llm_api import get_groq_response
-from slack_notify import notify_whatsapp_problem
+from chat.engine import get_groq_response
+from core.config import agent_type
+from summary.slack import notify_whatsapp_problem
 from whatsapp import repository
 from whatsapp.client import GraphResult, send_text
 from whatsapp.formatting import split_message, to_whatsapp

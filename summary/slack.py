@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-import config
+from core import config
 
 # Slack accepts about 40,000 characters in ``text``. Stay well under it and
 # split a long run into several messages.

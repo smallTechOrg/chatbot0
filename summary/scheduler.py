@@ -10,8 +10,8 @@ import traceback
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-import config
-from periodic_summary import periodic_summary
+from core import config
+from summary.periodic import periodic_summary
 
 JOB_ID = "periodic_summary"
 

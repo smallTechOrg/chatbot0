@@ -23,8 +23,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from psycopg import sql
 
-import config
-import db_pool
+from core import config, db_pool
 
 AUDIT_PROMPT_DOMAIN = "_sqlpaths_domain"
 AUDIT_ADDRESS = "sqlpaths-example.invalid"
@@ -74,14 +73,14 @@ def row_for(session_id):
 
 class TestChatInfoPaths:
     def test_select_all_leads(self):
-        from leads import get_all_chat_info
+        from leads.repository import get_all_chat_info
 
         records, _ = get_all_chat_info()
         assert isinstance(records, list)
 
     def test_leads_skip_chats_where_visitor_wrote_nothing(self, lead):
         """Only the intro message: not a lead. One visitor message: a lead."""
-        from leads import get_all_chat_info
+        from leads.repository import get_all_chat_info
 
         def listed():
             return any(r["session_id"] == lead for r in get_all_chat_info()[0])
@@ -102,7 +101,7 @@ class TestChatInfoPaths:
 
     def test_contact_update_writes_every_column_it_names(self, lead):
         """The statement that was broken: each field must land."""
-        from leads_update import update_contact_info
+        from leads.repository import update_contact_info
 
         assert update_contact_info(
             lead,
@@ -120,7 +119,7 @@ class TestChatInfoPaths:
         )
 
     def test_status_update_writes_every_column_it_names(self, lead):
-        from leads_update import update_chat_info
+        from leads.repository import update_chat_info
 
         assert update_chat_info(lead, status="QUALIFYING", remarks="note", is_active=True)
         row = row_for(lead)
@@ -128,7 +127,7 @@ class TestChatInfoPaths:
         assert row["remarks"] == "note"
 
     def test_session_request_type_insert(self, lead):
-        from conversation_processor.conversation_processor import (
+        from chat.lead_capture import (
             _update_session_request_type,
         )
 
@@ -136,7 +135,7 @@ class TestChatInfoPaths:
         assert row_for(lead) is not None
 
     def test_detected_info_upsert(self, lead):
-        from conversation_processor.conversation_processor import _save_info_to_database
+        from chat.lead_capture import _save_info_to_database
 
         _save_info_to_database(
             lead,
@@ -158,12 +157,12 @@ class TestChatInfoPaths:
 
 class TestPromptPaths:
     def test_select_all_prompts(self):
-        from prompts_table import get_all_prompts
+        from chat.prompt_store import get_all_prompts
 
         assert isinstance(get_all_prompts(), list)
 
     def test_upsert_prompt_round_trips(self):
-        from prompts_table import get_all_prompts, upsert_prompt
+        from chat.prompt_store import get_all_prompts, upsert_prompt
 
         assert upsert_prompt(AUDIT_PROMPT_DOMAIN, "agent", "kind", "first")
         assert upsert_prompt(AUDIT_PROMPT_DOMAIN, "agent", "kind", "second")
@@ -172,7 +171,7 @@ class TestPromptPaths:
         assert stored[0]["text"] == "second"
 
     def test_prompt_lookups(self):
-        from system_prompt import find_parent_key, find_prompt, get_prompt
+        from chat.prompts import find_parent_key, find_prompt, get_prompt
 
         assert find_prompt("COMMON", "sales", "base-prompt") is not None
         find_parent_key("COMMON")  # nullable, just has to execute
@@ -210,7 +209,7 @@ class TestDomainPaths:
                 cur.execute("SELECT contact_name, email, mobile FROM domains WHERE address = %s;", (AUDIT_ADDRESS,))
                 return cur.fetchone()
 
-        from db_pool import run_with_retry
+        from core.db_pool import run_with_retry
 
         assert run_with_retry(contact) == ("Anjali", "anjali@example.com", None)
 
@@ -222,7 +221,7 @@ class TestDomainPaths:
 
 class TestHistoryPaths:
     def test_read_write_and_clear(self, lead):
-        from history import get_session_history
+        from chat.history import get_session_history
 
         hist = get_session_history(lead)
         assert hist.messages == []

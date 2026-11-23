@@ -6,7 +6,6 @@ summary_notified_at), and post to Slack, resending until Slack has it.
 
 import traceback
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -15,15 +14,16 @@ from langchain_groq import ChatGroq
 from psycopg import sql
 from psycopg.rows import dict_row
 
-import config
-from db_pool import with_connection
-from slack_notify import send_summaries_to_slack
+from core import config
+from core.db_pool import with_connection
+from core.paths import PROMPTS_DIR
+from summary.slack import send_summaries_to_slack
 
 # How far back find_chats_needing_summary() looks (SUMMARY_WINDOW_DAYS in .env).
 SUMMARY_WINDOW = timedelta(days=config.SUMMARY_WINDOW_DAYS)
 
 # Prompt template for the summary; {conversation} is replaced with the transcript.
-SUMMARY_PROMPT_FILE = Path(__file__).parent / "prompts" / "summary_prompt.txt"
+SUMMARY_PROMPT_FILE = PROMPTS_DIR / "summary_prompt.txt"
 
 # Saved as the summary of a session where the visitor wrote nothing. Shown on
 # the dashboard, not sent to Slack.

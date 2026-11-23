@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import requests
 
-import config
+from core import config
 
 GRAPH = "https://graph.facebook.com/{version}/{path}"
 

@@ -10,9 +10,9 @@ import traceback
 import psycopg
 from langchain_postgres import PostgresChatMessageHistory
 
-import config
-from db_pool import RETRYABLE_ERRORS, run_with_retry
-from prompts_table import check_and_insert_default_prompts
+from chat.prompt_store import check_and_insert_default_prompts
+from core import config
+from core.db_pool import RETRYABLE_ERRORS, run_with_retry
 
 _bootstrap_lock = threading.Lock()
 _bootstrap_thread = None
@@ -186,7 +186,7 @@ def ensure_whatsapp_tables_exist(sync_connection):
     whatsapp_connections: one WhatsApp business number connected to a domain.
     Its id is in the number's webhook URL (/whatsapp/webhook/<id>), so a new
     connection works at once, with no deploy. Tokens are stored encrypted
-    (see crypto.py). Prompts follow the domain hierarchy, as on the web.
+    (see core/crypto.py). Prompts follow the domain hierarchy, as on the web.
 
     whatsapp_messages: message ids already handled. Meta redelivers a webhook
     it thinks failed; a redelivery must not get a second answer.

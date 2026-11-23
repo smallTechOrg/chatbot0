@@ -4,14 +4,14 @@ from unittest.mock import patch
 
 import pytest
 
-from contact_validation import (
+from chat import lead_capture as cp
+from chat.contact_validation import (
     clean_country,
     clean_email,
     clean_mobile,
     clean_name,
     sanitise_contact_info,
 )
-from conversation_processor import conversation_processor as cp
 
 # --------------------------------------------------------------------- email
 

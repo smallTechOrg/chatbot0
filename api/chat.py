@@ -6,10 +6,9 @@ from werkzeug.exceptions import HTTPException
 
 from api.models import APIResponse
 from api.validators import chat_api_validate, validate_contact_data, validate_history_data, validate_update_data
-from history import get_history
-from leads import get_all_chat_info
-from leads_update import update_chat_info, update_contact_info
-from llm_api import get_groq_response
+from chat.engine import get_groq_response
+from chat.history import get_history
+from leads.repository import get_all_chat_info, update_chat_info, update_contact_info
 
 chat_bp = Blueprint("chat", __name__)
 

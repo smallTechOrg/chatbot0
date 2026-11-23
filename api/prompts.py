@@ -4,7 +4,7 @@ from http import HTTPStatus
 from flask import Blueprint, jsonify, request
 
 from api.models import APIResponse
-from prompts_table import get_all_prompts, upsert_prompt
+from chat.prompt_store import get_all_prompts, upsert_prompt
 
 prompt_bp = Blueprint("prompts", __name__)
 

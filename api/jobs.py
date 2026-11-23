@@ -22,8 +22,8 @@ from flask import Blueprint, jsonify, request
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
-import config
-from periodic_summary import periodic_summary
+from core import config
+from summary.periodic import periodic_summary
 
 jobs_bp = Blueprint("jobs", __name__, url_prefix="/jobs")
 

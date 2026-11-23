@@ -21,8 +21,7 @@ from http import HTTPStatus
 
 from flask import Blueprint, request
 
-import config
-import crypto
+from core import config, crypto
 from whatsapp import repository
 from whatsapp.client import signature_is_valid
 from whatsapp.service import handle_payload

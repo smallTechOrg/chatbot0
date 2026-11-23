@@ -3,8 +3,8 @@ from http import HTTPStatus
 from urllib.parse import urlparse
 
 from api.models import ValidationResponse
-from config import agent_type, max_input_length, status_type
-from db_pool import with_connection
+from core.config import agent_type, max_input_length, status_type
+from core.db_pool import with_connection
 
 
 def chat_api_validate(request) -> ValidationResponse:

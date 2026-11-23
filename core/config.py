@@ -108,7 +108,7 @@ DASHBOARD_URL = _required("DASHBOARD_URL")
 SUMMARY_WINDOW_DAYS = int(os.getenv("SUMMARY_WINDOW_DAYS", "7"))
 
 # ---------------------------------------------------------------------------
-# Scheduler (see scheduler.py)
+# Scheduler (see summary/scheduler.py)
 # ---------------------------------------------------------------------------
 # When the periodic summary job runs, as a five-field cron pattern
 # (minute hour day month weekday). Default: at the start of every hour.
@@ -150,7 +150,7 @@ def _redact_password(url: str) -> str:
 print("Connecting to:", _redact_password(DATABASE_URL))
 
 # ---------------------------------------------------------------------------
-# Database connection pool (see db_pool.py)
+# Database connection pool (see core/db_pool.py)
 # ---------------------------------------------------------------------------
 
 # The database is a small shared instance. Keep the pool small. Do not set the

@@ -1,7 +1,7 @@
 import pytest
 
 from app import app
-from db_pool import get_connection
+from core.db_pool import get_connection
 
 
 @pytest.fixture

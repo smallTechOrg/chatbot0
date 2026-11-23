@@ -4,10 +4,10 @@ from datetime import datetime
 from langchain_core.messages import SystemMessage
 from langchain_groq import ChatGroq
 
-from config import GROQ_API_KEY, GROQ_MODEL_NAME, agent_type
-from contact_validation import sanitise_contact_info
-from db_pool import with_connection
-from system_prompt import get_prompt
+from chat.contact_validation import sanitise_contact_info
+from chat.prompts import get_prompt
+from core.config import GROQ_API_KEY, GROQ_MODEL_NAME, agent_type
+from core.db_pool import with_connection
 
 
 def process_conversation(user_input, session_id, request_type, domain):
