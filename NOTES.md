@@ -15,3 +15,8 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   at a missing interpreter. Use `venv/bin/python -m <tool>`.
 - **Env prefix with `||`.** `A=1 cmd1 || cmd2` does not pass A to cmd2: the first boot gate
   failed with "APP_ENV is not set". Use `env A=1 cmd`.
+- **Gate failure: pasted phone number ID rejected.** Symptom: a correct 16-digit ID copied from
+  Meta's onboarding page failed `^\d{5,20}$`. Cause: `.strip()` keeps invisible characters that web
+  pages copy along (LRM marks, NBSP, zero-width). Fix: drop Unicode Zs/Cf characters and an "ID:"
+  label from every pasted credential; show what was received when it still fails. Lesson: never
+  validate a pasted value with only `.strip()`; test with invisible characters.

@@ -18,6 +18,7 @@ import functools
 import hmac
 import re
 import secrets
+import unicodedata
 
 from flask import (Blueprint, abort, flash, redirect, render_template, request,
                    session, url_for)
@@ -39,6 +40,23 @@ _SEND_HINTS = {
     131030: "On a Meta test number, only recipients added under API Setup > 'To' can receive messages.",
     190: "The access token is invalid or expired. Replace it below.",
 }
+
+
+def _clean(value: str) -> str:
+    """
+    A pasted value without the invisible characters web pages copy along:
+    any Unicode space (non-breaking, thin, ...) and format characters such as
+    left-to-right marks and zero-width spaces, which the Meta dashboard adds.
+    """
+    return "".join(ch for ch in value if not (ch.isspace() or unicodedata.category(ch) in ("Cf", "Zs")))
+
+
+def _clean_id(value: str) -> str:
+    """A pasted numeric ID: invisible characters dropped, a leading "ID:" label too."""
+    value = _clean(value)
+    value = re.sub(r"^(phone ?number ?)?id:?", "", value, flags=re.I)
+    # Unicode digits (e.g. full-width) to ASCII.
+    return "".join(str(unicodedata.digit(ch)) if ch.isdigit() else ch for ch in value)
 
 
 def admin_enabled() -> bool:
@@ -131,9 +149,13 @@ def _check(connection_id: str, phone_number_id: str, token: str) -> bool:
 @login_required
 def whatsapp_list():
     if request.method == "POST":
-        f = {k: (request.form.get(k) or "").strip() for k in ("phone_number_id", "domain_key", "access_token", "app_secret")}
+        raw_id = request.form.get("phone_number_id") or ""
+        f = {k: _clean(request.form.get(k) or "") for k in ("domain_key", "access_token", "app_secret")}
+        f["phone_number_id"] = _clean_id(raw_id)
         if not _DIGITS.match(f["phone_number_id"]):
-            flash("Phone number ID is the numeric ID from WhatsApp > API Setup, not the phone number.", "error")
+            flash(f"Phone number ID must be the long numeric ID from WhatsApp > API Setup (not the phone "
+                  f"number). Received {len(raw_id)} characters: {raw_id.encode('unicode_escape').decode()[:80]}",
+                  "error")
         elif not all(f.values()):
             flash("All four fields are required.", "error")
         else:
@@ -162,9 +184,9 @@ def whatsapp_detail(connection_id):
 @login_required
 def whatsapp_credentials(connection_id):
     repository.get_connection(connection_id) or abort(404)
-    token = (request.form.get("access_token") or "").strip() or None
-    app_secret = (request.form.get("app_secret") or "").strip() or None
-    domain_key = (request.form.get("domain_key") or "").strip() or None
+    token = _clean(request.form.get("access_token") or "") or None
+    app_secret = _clean(request.form.get("app_secret") or "") or None
+    domain_key = _clean(request.form.get("domain_key") or "") or None
     if not (token or app_secret or domain_key):
         flash("Nothing to change.", "error")
     else:
