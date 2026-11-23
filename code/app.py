@@ -4,8 +4,12 @@ from flask_smorest import Api
 
 from api import register_blueprints
 from api.domains import domains_bp
+from admin import admin_bp
 from chatbot0 import chatbot0_bp, register_host_routing
-from config import DEBUG, PORT, SCHEDULER_ENABLED, WERKZEUG_RUN_MAIN
+from datetime import timedelta
+
+import crypto
+from config import APP_ENV, CHATBOT0_SECRET_KEY, DEBUG, PORT, SCHEDULER_ENABLED, WERKZEUG_RUN_MAIN
 from db import init_db
 from scheduler import start_scheduler, stop_scheduler
 
@@ -44,6 +48,19 @@ def create_app() -> Flask:
     flask_app.register_blueprint(chatbot0_bp)
     # ... and at the root of chatbot0.smalltech.in (host-based; other hosts unchanged).
     register_host_routing(flask_app)
+
+    # -- Admin pages (/chatbot0/admin/) ---------------------------------------
+    # The login cookie is signed with a key derived from CHATBOT0_SECRET_KEY.
+    # Without it the admin pages answer 503 and no cookie is ever issued.
+    if CHATBOT0_SECRET_KEY:
+        flask_app.secret_key = crypto.session_signing_key()
+    flask_app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=APP_ENV != "local",
+        PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
+    )
+    flask_app.register_blueprint(admin_bp)
 
     # -- Smorest-managed blueprints (auto-documented) --------------------------
     smorest_api = Api(flask_app)

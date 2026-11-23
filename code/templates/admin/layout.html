@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Admin{% endblock %} · chatbot0</title>
+  <link rel="icon" href="/chatbot0/static/img/favicon.ico" sizes="any">
+  <style>
+    :root { --gold:#D68A2E; --ink:#1C1B18; --bg:#F5F1EE; --surface:#FBFBF9; --muted:#4F4D4A; --line:#C4C3C0; --ok:#3d6b2a; --ok-bg:#e8f0e1; --err:#9b2c1f; --err-bg:#f7e3df; --warn-bg:#fbf0dc; }
+    *,*::before,*::after { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+    header { background:var(--ink); color:var(--bg); }
+    header .wrap { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-top:12px; padding-bottom:12px; }
+    header a { color:var(--bg); text-decoration:none; font-weight:700; }
+    header nav { display:flex; gap:16px; align-items:center; }
+    .zero { color:var(--gold); }
+    .wrap { max-width:960px; margin:0 auto; padding:0 16px; }
+    main { padding:28px 0 64px; }
+    h1 { font-size:24px; margin:0 0 16px; }
+    h2 { font-size:17px; margin:0 0 12px; }
+    .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:20px; margin-bottom:20px; }
+    label { display:block; font-weight:600; margin:12px 0 4px; }
+    .hint { color:var(--muted); font-size:13px; font-weight:400; }
+    input, select, textarea { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:6px; font:inherit; background:#fff; }
+    button { margin-top:16px; padding:9px 16px; border:0; border-radius:6px; background:var(--gold); color:var(--ink); font:inherit; font-weight:700; cursor:pointer; }
+    button.secondary { background:transparent; border:1px solid var(--ink); }
+    header button { margin:0; padding:4px 10px; background:transparent; color:var(--bg); border:1px solid #7B7977; font-weight:500; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+    .table-scroll { overflow-x:auto; }
+    .flash { padding:10px 14px; border-radius:8px; margin-bottom:16px; }
+    .flash.ok { background:var(--ok-bg); color:var(--ok); }
+    .flash.error { background:var(--err-bg); color:var(--err); }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; }
+    .badge.active { background:var(--ok-bg); color:var(--ok); }
+    .badge.pending { background:var(--warn-bg); color:#7a5212; }
+    .badge.needs_attention { background:var(--err-bg); color:var(--err); }
+    code, .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; word-break:break-all; }
+    .copy { display:flex; gap:8px; align-items:center; }
+    .copy input { font-family:ui-monospace,Menlo,monospace; font-size:13px; }
+    .copy button { margin:0; white-space:nowrap; }
+    .grid { display:grid; gap:20px; grid-template-columns:1fr; }
+    @media (min-width:760px) { .grid { grid-template-columns:1fr 1fr; } }
+    ol.steps { padding-left:20px; margin:0; } ol.steps li { margin-bottom:6px; }
+    a { color:var(--ink); }
+  </style>
+</head>
+<body>
+<header><div class="wrap">
+  <a href="/chatbot0/admin/">chatbot<span class="zero">0</span> admin</a>
+  {% if session.get("admin") %}
+  <nav>
+    <a href="{{ url_for('admin.whatsapp_list') }}">WhatsApp</a>
+    <form method="post" action="{{ url_for('admin.logout') }}" style="margin:0">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button type="submit">Sign out</button>
+    </form>
+  </nav>
+  {% endif %}
+</div></header>
+<main><div class="wrap">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+  <div class="flash {{ category }}" role="status">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</div></main>
+<script>
+document.querySelectorAll("[data-copy]").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var input = document.getElementById(btn.dataset.copy);
+    input.select();
+    try { navigator.clipboard.writeText(input.value); } catch (e) { document.execCommand("copy"); }
+    btn.textContent = "Copied"; setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+  });
+});
+</script>
+</body>
+</html>

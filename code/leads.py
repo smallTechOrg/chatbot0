@@ -22,6 +22,7 @@ def _select_chat_info(conn) -> List[Dict[str, Any]]:
                 COALESCE(remarks, '') as remarks,
                 COALESCE(summary, '') as summary,
                 COALESCE(domain) as domain,
+                COALESCE(channel, 'web') as channel,
                 COALESCE(created_at) as time
             FROM chat_info
             WHERE is_active is TRUE
