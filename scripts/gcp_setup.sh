@@ -19,7 +19,9 @@ DEPLOY_SA="${DEPLOY_SA:?set DEPLOY_SA to the GitHub deploy service account email
 AR_REPOSITORY="zero-sales-agent"
 RUNTIME_SA="zero-sales-agent-run@${PROJECT_ID}.iam.gserviceaccount.com"
 SCHEDULER_SA="zero-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
-SECRETS=(GROQ_API_KEY POSTGRES_URL SLACK_WEBHOOK_URL)
+# CHATBOT0_SECRET_KEY encrypts stored WhatsApp tokens and signs the admin
+# login; CHATBOT0_ADMIN_PASSWORD is the /chatbot0/admin/ password.
+SECRETS=(GROQ_API_KEY POSTGRES_URL SLACK_WEBHOOK_URL CHATBOT0_SECRET_KEY CHATBOT0_ADMIN_PASSWORD)
 
 gcloud config set project "$PROJECT_ID" >/dev/null
 

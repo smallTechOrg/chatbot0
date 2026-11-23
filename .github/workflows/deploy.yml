@@ -170,7 +170,7 @@ jobs:
             --min-instances "$MIN_INSTANCES"
             --max-instances "$MAX_INSTANCES"
             --env-vars-file "$RUNNER_TEMP/env.yaml"
-            --set-secrets "GROQ_API_KEY=GROQ_API_KEY:latest,DATABASE_URL=POSTGRES_URL:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest"
+            --set-secrets "GROQ_API_KEY=GROQ_API_KEY:latest,DATABASE_URL=POSTGRES_URL:latest,SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest,CHATBOT0_SECRET_KEY=CHATBOT0_SECRET_KEY:latest,CHATBOT0_ADMIN_PASSWORD=CHATBOT0_ADMIN_PASSWORD:latest"
             --labels "app=zero-sales-agent,env=${APP_ENV},commit=${GITHUB_SHA::12}"
             --quiet
           )

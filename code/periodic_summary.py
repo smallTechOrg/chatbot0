@@ -83,6 +83,7 @@ def periodic_summary() -> Dict[str, Any]:
                 "summary": row["summary"],
                 "first_message": row["first_message"],
                 "domain": row["domain"],
+                "channel": row.get("channel", "web"),
                 "name": row["name"],
                 "resent": True,
             }
@@ -145,6 +146,7 @@ def find_chats_needing_summary(conn, window: timedelta = SUMMARY_WINDOW) -> List
         SELECT
             h.session_id::text                  AS session_id,
             ci.domain                           AS domain,
+            COALESCE(ci.channel, 'web')         AS channel,
             COALESCE(ci.contact_name, '')       AS name,
             COALESCE(ci.email, '')              AS email,
             ci.request_type                     AS request_type,
@@ -157,7 +159,7 @@ def find_chats_needing_summary(conn, window: timedelta = SUMMARY_WINDOW) -> List
         JOIN chat_info ci ON ci.session_id = h.session_id::text
         WHERE h.created_at >= NOW() - %(window)s::interval
         GROUP BY
-            h.session_id, ci.domain, ci.contact_name, ci.email, ci.request_type,
+            h.session_id, ci.domain, ci.channel, ci.contact_name, ci.email, ci.request_type,
             ci.status, ci.created_at, ci.summary, ci.summary_generated_at
         HAVING ci.summary IS NULL
             OR MAX(h.created_at) > ci.summary_generated_at
@@ -290,6 +292,7 @@ def find_unnotified_summaries(conn) -> List[Dict[str, Any]]:
             ci.session_id,
             COALESCE(ci.contact_name, '') AS name,
             ci.domain,
+            COALESCE(ci.channel, 'web') AS channel,
             ci.summary,
             (SELECT MIN(h.created_at) FROM {table} h
              WHERE h.session_id::text = ci.session_id) AS first_message

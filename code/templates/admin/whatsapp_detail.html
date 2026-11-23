@@ -1,0 +1,66 @@
+{% extends "admin/layout.html" %}
+{% block title %}{{ c.display_number or c.phone_number_id }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('admin.whatsapp_list') }}">&larr; All connections</a></p>
+<h1>{{ c.display_number or c.phone_number_id }} {% include "admin/_status.html" %}</h1>
+
+<div class="card">
+  <h2>Status</h2>
+  <table>
+    <tr><th>Domain</th><td>{{ c.domain_key }}</td></tr>
+    <tr><th>Phone number ID</th><td class="mono">{{ c.phone_number_id }}</td></tr>
+    {% if c.verified_name %}<tr><th>Business name</th><td>{{ c.verified_name }}</td></tr>{% endif %}
+    <tr><th>Last message</th><td>{{ c.last_message_at.strftime("%d %b %Y, %H:%M UTC") if c.last_message_at else "None received yet" }}</td></tr>
+    <tr><th>Last error</th><td>{% if c.last_error %}{{ c.last_error }}<div class="hint">{{ c.last_error_at.strftime("%d %b %Y, %H:%M UTC") }}</div>{% else %}None{% endif %}</td></tr>
+  </table>
+  <form method="post" action="{{ url_for('admin.whatsapp_check', connection_id=c.id) }}">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button type="submit" class="secondary">Check token now</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Webhook setup in Meta</h2>
+  <ol class="steps">
+    <li>Meta app &gt; WhatsApp &gt; Configuration &gt; Webhook &gt; Edit.</li>
+    <li>Paste the callback URL and verify token below, then Verify and save.</li>
+    <li>Under Webhook fields, subscribe to <code>messages</code>.</li>
+    <li>Send a WhatsApp message to the number. Status turns Active and the bot replies.</li>
+  </ol>
+  <label for="webhook_url">Callback URL</label>
+  <div class="copy"><input id="webhook_url" value="{{ webhook_url }}" readonly><button type="button" class="secondary" data-copy="webhook_url">Copy</button></div>
+  <label for="verify_token">Verify token</label>
+  <div class="copy"><input id="verify_token" value="{{ c.verify_token }}" readonly><button type="button" class="secondary" data-copy="verify_token">Copy</button></div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h2>Send a test message</h2>
+    <p class="hint">WhatsApp only allows free text to someone who messaged the number in the last 24 hours.</p>
+    <form method="post" action="{{ url_for('admin.whatsapp_test', connection_id=c.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <label for="to">To <span class="hint">with country code, e.g. 919876543210</span></label>
+      <input id="to" name="to" inputmode="tel" required>
+      <label for="body">Message</label>
+      <textarea id="body" name="body" rows="2" placeholder="Test message from chatbot0. Reply to chat with the bot."></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Replace credentials</h2>
+    <p class="hint">Leave a field empty to keep it. Stored encrypted; never shown again.</p>
+    <form method="post" action="{{ url_for('admin.whatsapp_credentials', connection_id=c.id) }}" autocomplete="off">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <label for="access_token">Access token</label>
+      <input id="access_token" name="access_token" type="password">
+      <label for="app_secret">App secret</label>
+      <input id="app_secret" name="app_secret" type="password">
+      <label for="domain_key">Domain</label>
+      <select id="domain_key" name="domain_key">
+        {% for key in domain_keys %}<option value="{{ key }}" {{ "selected" if key == c.domain_key }}>{{ key }}</option>{% endfor %}
+      </select>
+      <button type="submit">Save</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

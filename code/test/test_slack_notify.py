@@ -335,3 +335,38 @@ class TestEnvironmentMarker:
         assert len(messages) > 1
         assert all(m["text"].startswith("*[Staging]* <") for m in messages)
         assert all(m["username"] == "chatbot0-updates" for m in messages)
+
+
+class TestSignupMessage:
+    def test_text_has_site_and_contact(self):
+        text = slack_notify.build_signup_text(
+            "acme.com", {"contact_name": "Anjali <A>", "email": "anjali@acme.com", "mobile": None})
+        assert text == "*New chatbot0 sign-up:* acme.com - Anjali &lt;A&gt; - anjali@acme.com"
+
+    def test_text_without_contact(self):
+        assert slack_notify.build_signup_text("acme.com") == "*New chatbot0 sign-up:* acme.com - no contact details"
+
+    def test_staging_is_marked(self, monkeypatch):
+        monkeypatch.setattr(slack_notify.config, "environment_label", lambda: "Staging")
+        assert slack_notify.build_signup_text("acme.com").startswith("*[Staging]* *New chatbot0 sign-up:*")
+
+    def test_posts_one_message(self, monkeypatch, posted):
+        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.example/x")
+        assert slack_notify.notify_signup("acme.com", {"contact_name": "Anjali"}) is True
+        assert len(posted) == 1
+        assert posted[0]["json"] == {"username": "chatbot0-updates",
+                                     "text": "*New chatbot0 sign-up:* acme.com - Anjali"}
+
+    def test_no_webhook_skips(self, monkeypatch, posted):
+        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", None)
+        assert slack_notify.notify_signup("acme.com") is False
+        assert posted == []
+
+    def test_slack_failure_never_raises(self, monkeypatch):
+        monkeypatch.setattr(slack_notify.config, "SLACK_WEBHOOK_URL", "https://hooks.example/x")
+
+        def boom(*args, **kwargs):
+            raise ConnectionError("slack down")
+
+        monkeypatch.setattr(slack_notify.requests, "post", boom)
+        assert slack_notify.notify_signup("acme.com") is False

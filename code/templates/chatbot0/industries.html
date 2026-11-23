@@ -1,0 +1,51 @@
+{% extends "chatbot0/base.html" %}
+{#- Industries, from chatbot0/content.py (INDUSTRIES). ?industry=<name> (old zer0 links) highlights one entry. -#}
+{% block content %}
+<section class="pub-hero pub-hero--short">
+  <div class="pub-wrap"><div class="pub-section__head">
+    {% if selected %}
+    <p class="pub-label">Industries</p>
+    <h1 class="pub-title">chatbot0 for <span class="pub-accent">{{ selected.name }}.</span></h1>
+    <p class="pub-lead">{{ selected.pitch }} <a class="pub-link" href="#{{ selected.slug }}">See how</a>.</p>
+    {% else %}
+    <p class="pub-label">Industries</p>
+    <h1 class="pub-title">One agent, shaped to <span class="pub-accent">your business.</span></h1>
+    <p class="pub-lead">chatbot0 learns your business from the description you give it, so it speaks your customers' language, whatever you do.</p>
+    {% endif %}
+    <div class="pub-actions pub-actions--flush">
+      <a class="pub-btn pub-btn--primary" href="{{ signup_url }}">Sign up for free</a>
+      <a class="pub-btn pub-btn--secondary" href="pricing">See pricing</a>
+    </div>
+  </div></div>
+</section>
+
+<section class="pub-section pub-section--flush" id="industries">
+  <div class="pub-wrap">
+    <div class="pub-cards pub-cards--3">
+      {% for industry in industries %}
+      <article class="pub-card{% if industry == selected %} pub-card--current{% endif %}" id="{{ industry.slug }}"{% if industry == selected %} aria-current="true"{% endif %}>
+        <p class="pub-label">{{ industry.name }}</p>
+        <h2 class="pub-subheading">{{ industry.feature }}</h2>
+        <p class="pub-body">{{ industry.desc }}</p>
+        {% if industry.slug == "sales" %}<a class="pub-link pub-card__more" href="sales">The AI sales agent</a>
+        {% elif industry.slug == "customer-service" %}<a class="pub-link pub-card__more" href="support">The AI support agent</a>
+        {% elif industry.slug == "enterprises" %}<a class="pub-link pub-card__more" href="mailto:{{ contact_email }}?subject=chatbot0%20custom%20setup">Talk to us</a>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="pub-section pub-section--tight">
+  <div class="pub-wrap">
+    <div class="pub-panel pub-cta">
+      <h2 class="pub-heading pub-heading--on-ink">Don't see your industry?</h2>
+      <p class="pub-body pub-body--on-ink">If your customers ask questions, chatbot0 can answer them. Describe your business when you sign up and it takes it from there.</p>
+      <div class="pub-actions pub-actions--center">
+        <a class="pub-btn pub-btn--primary" href="{{ signup_url }}">Sign up for free</a>
+        <a class="pub-btn pub-btn--secondary-on-ink" href="mailto:{{ contact_email }}?subject=chatbot0%20for%20my%20industry">Email {{ contact_email }}</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

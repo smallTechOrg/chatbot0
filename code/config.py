@@ -68,6 +68,28 @@ max_input_length = int(os.getenv("MAX_INPUT_LENGTH", "10000"))
 DEFAULT_DOMAIN = os.getenv("DEFAULT_DOMAIN", "COMMON")
 
 # ---------------------------------------------------------------------------
+# Secrets for stored credentials and the admin page
+# ---------------------------------------------------------------------------
+# Encrypts the WhatsApp tokens kept in the database and signs the admin login
+# cookie. Changing it makes stored tokens unreadable: they must be entered
+# again. Unset: the admin page and the WhatsApp webhooks are off.
+CHATBOT0_SECRET_KEY = os.getenv("CHATBOT0_SECRET_KEY", "").strip()
+# Password of /chatbot0/admin/. Unset: nobody can sign in.
+CHATBOT0_ADMIN_PASSWORD = os.getenv("CHATBOT0_ADMIN_PASSWORD", "").strip()
+
+# ---------------------------------------------------------------------------
+# WhatsApp (Cloud API, see code/whatsapp/)
+# ---------------------------------------------------------------------------
+# Numbers, tokens and app secrets are per connection, in the database (added on
+# the admin page), not here.
+WHATSAPP_GRAPH_VERSION = os.getenv("WHATSAPP_GRAPH_VERSION", "v25.0").strip()
+# Seconds to wait for one Graph API call.
+WHATSAPP_TIMEOUT = float(os.getenv("WHATSAPP_TIMEOUT", "10"))
+# Public base URL shown for webhook URLs on the admin page. Unset: the URL the
+# page was requested on.
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+
+# ---------------------------------------------------------------------------
 # Slack (periodic summary)
 # ---------------------------------------------------------------------------
 # Incoming webhook for the channel that receives the periodic chat summary.

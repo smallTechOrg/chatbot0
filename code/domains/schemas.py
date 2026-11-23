@@ -7,7 +7,7 @@ These schemas serve three purposes simultaneously:
   3. OpenAPI documentation – flask-smorest reflects the schema into the generated spec.
 """
 import re
-from marshmallow import Schema, fields, validates, ValidationError, EXCLUDE
+from marshmallow import Schema, fields, validate, validates, pre_load, ValidationError, EXCLUDE
 
 
 class CreateDomainRequest(Schema):
@@ -30,6 +30,35 @@ class CreateDomainRequest(Schema):
             "example": "https://www.example.com/about",
         },
     )
+
+    # Who is signing up, from the chatbot0 sign-up form. All optional, stored
+    # on the domain and never returned by the API (GET /domains/ is public).
+    contact_name = fields.Str(
+        load_default=None,
+        validate=validate.Length(max=200),
+        metadata={"description": "Name of the person signing up.", "example": "Anjali"},
+    )
+    email = fields.Email(
+        load_default=None,
+        validate=validate.Length(max=254),
+        metadata={"description": "Contact email.", "example": "anjali@example.com"},
+    )
+    mobile = fields.Str(
+        load_default=None,
+        validate=validate.Regexp(r"^\+?[0-9 ()-]{6,20}$", error="Not a valid phone number."),
+        metadata={"description": "Contact phone number.", "example": "+91 98765 43210"},
+    )
+
+    @pre_load
+    def blank_contact_is_none(self, data, **kwargs):
+        """The form sends "" for a field left empty. Treat it as not given."""
+        if isinstance(data, dict):
+            data = dict(data)
+            for name in ("contact_name", "email", "mobile"):
+                value = data.get(name)
+                if isinstance(value, str):
+                    data[name] = value.strip() or None
+        return data
 
     @validates("website_url")
     def validate_website_url(self, value: str) -> None:

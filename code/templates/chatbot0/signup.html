@@ -1,0 +1,88 @@
+{% extends "chatbot0/base.html" %}
+{#- Sign-up, ported from zer0-frontend-web signUpPage.tsx. static/chatbot0/js/signup.js does the work:
+    POST /domains/ (with the contact details), POST /prompt (when a description is given), then the embed script.
+    Inputs have no name attribute and the button starts disabled, so nothing is ever submitted without the script. -#}
+{% block head %}
+  <script src="static/js/signup.js" defer></script>
+{% endblock %}
+{% block content %}
+<section class="pub-hero pub-hero--short">
+  <div class="pub-wrap pub-signup">
+    <div id="signup-form-step">
+      <div class="pub-section__head">
+        <p class="pub-label">Sign up free</p>
+        <h1 class="pub-title">Your AI chat agent, <span class="pub-accent">live in minutes.</span></h1>
+        <p class="pub-lead">Tell us about your business and get the one line of code that puts chatbot0 on your website. {{ free_conversations }} conversations a month free, no card needed.</p>
+      </div>
+
+      <noscript><p class="pub-alert">The sign-up form needs JavaScript. Turn it on, or email <a class="pub-link" href="mailto:{{ contact_email }}?subject=chatbot0%20sign-up">{{ contact_email }}</a> and we'll set you up.</p></noscript>
+
+      <form class="pub-form" id="signup-form">
+        <div class="pub-field">
+          <label class="pub-field__label" for="su-name">Your name</label>
+          <input class="pub-input" id="su-name" type="text" placeholder="Jane Doe" autocomplete="name" required>
+        </div>
+
+        <div class="pub-field">
+          <label class="pub-field__label" for="su-website">Website URL</label>
+          <input class="pub-input" id="su-website" type="url" placeholder="https://www.example.com" autocomplete="url" required>
+        </div>
+
+        <fieldset class="pub-field">
+          <legend class="pub-field__label">Contact method</legend>
+          <div class="pub-toggle" role="group" aria-label="Contact method">
+            <button type="button" class="pub-toggle__opt" data-contact-method="email" aria-pressed="true">Email</button>
+            <button type="button" class="pub-toggle__opt" data-contact-method="phone" aria-pressed="false">Phone</button>
+          </div>
+          <label class="pub-sr" for="su-email">Email</label>
+          <input class="pub-input" id="su-email" type="email" placeholder="jane@example.com" autocomplete="email" required>
+          <label class="pub-sr" for="su-phone">Phone</label>
+          <input class="pub-input" id="su-phone" type="tel" placeholder="+919876543210" autocomplete="tel" hidden disabled>
+        </fieldset>
+
+        <div class="pub-field">
+          <label class="pub-field__label" for="su-prompt">About your business <span class="pub-field__hint">(optional: what you offer, who it's for, prices, policies, FAQs. The more detail you give, the smarter it gets.)</span></label>
+          <textarea class="pub-input pub-input--area" id="su-prompt" rows="4" placeholder="We are XYZ Interiors, a design studio in Pune. We fit out homes and offices, from single rooms to full projects. Consultations are free and..."></textarea>
+        </div>
+
+        <fieldset class="pub-field">
+          <legend class="pub-field__label">Widget colour</legend>
+          <div class="pub-colour">
+            <input class="pub-colour__picker" id="su-colour-picker" type="color" value="{{ default_colour }}" aria-label="Pick a widget colour">
+            <label class="pub-sr" for="su-colour">Widget colour (hex)</label>
+            <input class="pub-input pub-input--mono" id="su-colour" type="text" value="{{ default_colour }}" pattern="^#[0-9A-Fa-f]{6}$" spellcheck="false">
+            <span class="pub-colour__bubble" data-colour-preview aria-hidden="true">💬</span>
+          </div>
+          <div class="pub-swatches">
+            {% for c in widget_colours %}
+            <button type="button" class="pub-swatch" data-colour="{{ c }}" aria-label="Select colour {{ c }}"></button>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <p class="pub-alert" id="signup-error" role="alert" hidden></p>
+
+        <button type="submit" class="pub-btn pub-btn--primary pub-form__submit" id="signup-submit" disabled>Get my embed script</button>
+        <p class="pub-caption">Questions or a custom setup? <a class="pub-link" href="mailto:{{ contact_email }}?subject=chatbot0%20sign-up">{{ contact_email }}</a></p>
+      </form>
+    </div>
+
+    <div id="signup-done-step" hidden>
+      <div class="pub-section__head">
+        <p class="pub-label">Done</p>
+        <h1 class="pub-title" tabindex="-1" id="signup-done-title">You're <span class="pub-accent">all set.</span></h1>
+        <p class="pub-lead">Copy the script below and paste it into your website's HTML, just before the closing <code class="pub-code-inline">&lt;/body&gt;</code> tag.</p>
+      </div>
+      <div class="pub-embed">
+        <pre class="pub-embed__code"><code id="signup-embed"></code></pre>
+        <button type="button" class="pub-btn pub-btn--primary pub-embed__copy" id="signup-copy">Copy</button>
+      </div>
+      <p class="pub-label pub-embed__preview-label">Preview</p>
+      <span class="pub-widget-preview" data-colour-preview><span aria-hidden="true">💬</span> Chat with us</span>
+      <div class="pub-actions pub-embed__after">
+        <button type="button" class="pub-btn pub-btn--secondary" id="signup-restart">&larr; Start over</button>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

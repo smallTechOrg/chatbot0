@@ -98,6 +98,58 @@ def post_to_slack(payload: Dict[str, Any], webhook_url: str = None) -> None:
         raise RuntimeError(f"Slack webhook returned {response.status_code}: {response.text[:200]}")
 
 
+def notify_signup(address: str, contact: Optional[Dict[str, Any]] = None) -> bool:
+    """
+    Post one line about a new chatbot0 sign-up to the same channel:
+    "New chatbot0 sign-up: acme.com - Anjali - anjali@acme.com".
+    Returns whether it was sent. Never raises: a Slack problem must not fail
+    the sign-up, which is already saved.
+    """
+    if not config.SLACK_WEBHOOK_URL:
+        print("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the sign-up message.")
+        return False
+    try:
+        post_to_slack({"username": SENDER, "text": build_signup_text(address, contact)})
+        return True
+    except Exception as exc:
+        print(f"[SLACK] Sign-up message for {address} failed: {exc}")
+        return False
+
+
+def notify_whatsapp_problem(connection: Dict[str, Any], error: str) -> bool:
+    """
+    One line when a WhatsApp connection starts failing, e.g. an expired token:
+    "WhatsApp needs attention: ACME (+1 555...) - HTTP 401: ...". Never raises.
+    """
+    if not config.SLACK_WEBHOOK_URL:
+        print("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the WhatsApp alert.")
+        return False
+    number = connection.get("display_number") or connection.get("phone_number_id")
+    text = (f"*WhatsApp needs attention:* {_escape(str(connection.get('domain_key', '')).upper())} "
+            f"({_escape(str(number))}) - {_escape(_clip(error, 300))}")
+    label = config.environment_label()
+    try:
+        post_to_slack({"username": SENDER, "text": f"*[{label}]* {text}" if label else text})
+        return True
+    except Exception as exc:
+        print(f"[SLACK] WhatsApp alert failed: {exc}")
+        return False
+
+
+def build_signup_text(address: str, contact: Optional[Dict[str, Any]] = None) -> str:
+    contact = contact or {}
+    parts = [_escape(address)]
+    for name in ("contact_name", "email", "mobile"):
+        value = (contact.get(name) or "").strip()
+        if value:
+            parts.append(_escape(value))
+    if len(parts) == 1:
+        parts.append("no contact details")
+    text = "*New chatbot0 sign-up:* " + " - ".join(parts)
+    label = config.environment_label()
+    return f"*[{label}]* {text}" if label else text
+
+
 def _header(result: Dict[str, Any]) -> str:
     run_at: Optional[datetime] = result.get("run_at")
     title = TITLE
@@ -122,6 +174,8 @@ def _conversation_line(session: Dict[str, Any]) -> str:
     when = format_line_time(first) if isinstance(first, datetime) else "unknown time"
 
     domain = (session.get("domain") or "UNKNOWN").upper()
+    if session.get("channel") == "whatsapp":
+        domain += " (WhatsApp)"
     name = (session.get("name") or "").strip() or "Unknown"
 
     if "error" in session:

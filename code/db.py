@@ -93,6 +93,8 @@ def ensure_summaries_table_exists(sync_connection):
         cur.execute("ALTER TABLE chat_info ADD COLUMN IF NOT EXISTS domain TEXT;")
 
         cur.execute("ALTER TABLE chat_info ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;")
+        # Where the chat happened: web (the widget) or whatsapp.
+        cur.execute("ALTER TABLE chat_info ADD COLUMN IF NOT EXISTS channel TEXT DEFAULT 'web';")
 
         # Summary columns written by periodic_summary. Older databases call
         # summary_generated_at summary_updated_at: rename it to keep the data.
@@ -170,8 +172,53 @@ def ensure_domains_table_exists(sync_connection):
         ON CONFLICT (address) DO NOTHING;
         """
         cur.execute(create_table_sql)
+        # Who signed the domain up, from the chatbot0 sign-up form. Only the
+        # main row carries them; the www row stays empty.
+        cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS contact_name TEXT;")
+        cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS email TEXT;")
+        cur.execute("ALTER TABLE domains ADD COLUMN IF NOT EXISTS mobile TEXT;")
 
     print("Table 'domains' created/verified successfully.")
+
+
+def ensure_whatsapp_tables_exist(sync_connection):
+    """
+    whatsapp_connections: one WhatsApp business number connected to a domain.
+    Its id is in the number's webhook URL (/whatsapp/webhook/<id>), so a new
+    connection works at once, with no deploy. Tokens are stored encrypted
+    (see crypto.py). Prompts follow the domain hierarchy, as on the web.
+
+    whatsapp_messages: message ids already handled. Meta redelivers a webhook
+    it thinks failed; a redelivery must not get a second answer.
+    """
+    with sync_connection.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS whatsapp_connections (
+                id TEXT PRIMARY KEY,
+                phone_number_id TEXT UNIQUE NOT NULL,
+                domain_key TEXT NOT NULL,
+                display_number TEXT,
+                verified_name TEXT,
+                access_token_enc TEXT NOT NULL,
+                app_secret_enc TEXT NOT NULL,
+                verify_token TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                last_message_at TIMESTAMPTZ,
+                last_error TEXT,
+                last_error_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS whatsapp_messages (
+                message_id TEXT PRIMARY KEY,
+                received_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_received_at
+            ON whatsapp_messages(received_at);
+            """
+        )
+    print("Tables 'whatsapp_connections' and 'whatsapp_messages' created/verified successfully.")
 
 
 def _create_schema(sync_connection):
@@ -186,6 +233,7 @@ def _create_schema(sync_connection):
         ensure_summaries_table_exists,
         ensure_prompts_table_exists,
         ensure_domains_table_exists,
+        ensure_whatsapp_tables_exist,
         check_and_insert_default_prompts,
     )
     for step in steps:

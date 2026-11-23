@@ -18,3 +18,5 @@ apscheduler==3.11.0
 gunicorn==23.0.0
 # Verifies the Cloud Scheduler OIDC token in api/jobs.py.
 google-auth==2.62.1
+# Encrypts the WhatsApp credentials stored in the database (crypto.py).
+cryptography==50.0.2
