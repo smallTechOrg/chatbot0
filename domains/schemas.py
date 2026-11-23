@@ -6,8 +6,10 @@ These schemas serve three purposes simultaneously:
   2. Output serialisation – flask-smorest calls Schema.dump() on every response.
   3. OpenAPI documentation – flask-smorest reflects the schema into the generated spec.
 """
+
 import re
-from marshmallow import Schema, fields, validate, validates, pre_load, ValidationError, EXCLUDE
+
+from marshmallow import EXCLUDE, Schema, ValidationError, fields, pre_load, validate, validates
 
 
 class CreateDomainRequest(Schema):
@@ -70,9 +72,7 @@ class CreateDomainRequest(Schema):
         candidate = re.sub(r"^https?://", "", stripped, flags=re.IGNORECASE)
         host_part = candidate.split("/")[0].split("?")[0]
         if "." not in host_part:
-            raise ValidationError(
-                "website_url does not appear to contain a valid hostname."
-            )
+            raise ValidationError("website_url does not appear to contain a valid hostname.")
 
 
 class DomainResponse(Schema):

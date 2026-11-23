@@ -7,18 +7,21 @@ picks the domain, so prompts follow the domain hierarchy as on the web. Chats
 are pull-only: the customer writes first, so free-form replies are allowed
 (WhatsApp's 24-hour service window).
 """
+
 from __future__ import annotations
 
-import traceback
+import logging
 import uuid
-from typing import Iterator, Optional
+from collections.abc import Iterator
 
-from config import agent_type
-from llm_api import get_groq_response
-from slack_notify import notify_whatsapp_problem
+from chat.engine import get_groq_response
+from core.config import agent_type
+from summary.slack import notify_whatsapp_problem
 from whatsapp import repository
 from whatsapp.client import GraphResult, send_text
 from whatsapp.formatting import split_message, to_whatsapp
+
+logger = logging.getLogger(__name__)
 
 # WhatsApp chats use the sales agent: the lead details it captures are the point.
 REQUEST_TYPE = agent_type.SALES.value
@@ -38,7 +41,7 @@ def session_id_for(phone_number_id: str, wa_id: str) -> str:
     return str(uuid.uuid5(_SESSION_NAMESPACE, f"{phone_number_id}:{wa_id}"))
 
 
-def _message_text(msg: dict) -> Optional[str]:
+def _message_text(msg: dict) -> str | None:
     kind = msg.get("type")
     if kind == "text":
         return (msg.get("text") or {}).get("body")
@@ -75,18 +78,32 @@ def iter_events(payload: dict) -> Iterator[dict]:
                     continue
                 text = (_message_text(msg) or "").strip()
                 if text:
-                    yield {"kind": "text", "phone_number_id": pnid, "wa_id": wa_id,
-                           "name": names.get(wa_id), "message_id": mid, "text": text}
+                    yield {
+                        "kind": "text",
+                        "phone_number_id": pnid,
+                        "wa_id": wa_id,
+                        "name": names.get(wa_id),
+                        "message_id": mid,
+                        "text": text,
+                    }
                 elif msg.get("type") in _MEDIA_TYPES:
-                    yield {"kind": "media", "phone_number_id": pnid, "wa_id": wa_id,
-                           "message_id": mid, "type": msg.get("type")}
+                    yield {
+                        "kind": "media",
+                        "phone_number_id": pnid,
+                        "wa_id": wa_id,
+                        "message_id": mid,
+                        "type": msg.get("type"),
+                    }
             for status in value.get("statuses") or []:
                 if status.get("status") == "failed":
                     errs = status.get("errors") or [{}]
                     err = errs[0]
                     detail = (err.get("error_data") or {}).get("details") or err.get("message") or err.get("title")
-                    yield {"kind": "failed_status", "phone_number_id": pnid,
-                           "error": f"delivery failed ({err.get('code')}): {detail}"}
+                    yield {
+                        "kind": "failed_status",
+                        "phone_number_id": pnid,
+                        "error": f"delivery failed ({err.get('code')}): {detail}",
+                    }
 
 
 def handle_payload(connection: dict, payload: dict) -> None:
@@ -102,25 +119,24 @@ def handle_payload(connection: dict, payload: dict) -> None:
             if event["phone_number_id"] != connection["phone_number_id"]:
                 conn = repository.get_connection_by_number(event["phone_number_id"])
                 if not conn or conn["app_secret"] != connection["app_secret"]:
-                    print(f"[WHATSAPP] event for unconnected number {event['phone_number_id']}; ignoring")
+                    logger.info(f"[WHATSAPP] event for unconnected number {event['phone_number_id']}; ignoring")
                     continue
             if event["kind"] == "failed_status":
                 _record_failure(conn, event["error"], token_problem=False)
                 continue
             repository.mark_inbound(conn["id"])
             if not repository.claim_message(event["message_id"]):
-                print(f"[WHATSAPP] message {event['message_id']} already handled; ignoring the redelivery")
+                logger.info(f"[WHATSAPP] message {event['message_id']} already handled; ignoring the redelivery")
                 continue
             if event["kind"] == "media":
                 _send(conn, event["wa_id"], [TEXT_ONLY_REPLY])
             else:
                 handle_text(conn, event["wa_id"], event["name"], event["text"])
         except Exception:
-            print(f"[WHATSAPP] failed handling {event['kind']} event")
-            print(traceback.format_exc())
+            logger.exception(f"[WHATSAPP] failed handling {event['kind']} event")
 
 
-def handle_text(conn: dict, wa_id: str, name: Optional[str], text: str) -> None:
+def handle_text(conn: dict, wa_id: str, name: str | None, text: str) -> None:
     session_id = session_id_for(conn["phone_number_id"], wa_id)
     domain = conn["domain_key"]
     try:
@@ -128,7 +144,7 @@ def handle_text(conn: dict, wa_id: str, name: Optional[str], text: str) -> None:
         reply = get_groq_response(text, session_id, REQUEST_TYPE, domain)
         bodies = split_message(to_whatsapp(reply)) or [FALLBACK_REPLY]
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         bodies = [FALLBACK_REPLY]
     _send(conn, wa_id, bodies)
 
@@ -139,8 +155,9 @@ def _send(conn: dict, wa_id: str, bodies: list[str]) -> bool:
         if not result.ok:
             # Any error Meta answers with (bad token, recipient not allowed,
             # rate limit) needs a person; a network blip does not.
-            _record_failure(conn, result.error or "send failed",
-                            token_problem=result.token_problem or result.code is not None)
+            _record_failure(
+                conn, result.error or "send failed", token_problem=result.token_problem or result.code is not None
+            )
             return False
     return True
 
@@ -151,10 +168,10 @@ def _record_failure(conn: dict, error: str, token_problem: bool) -> None:
     connection 'needs attention'; Slack hears about it once, when it is first flagged, not
     on every failed message after.
     """
-    print(f"[WHATSAPP] connection {conn['id']}: {error}")
+    logger.error(f"[WHATSAPP] connection {conn['id']}: {error}")
     newly_flagged = repository.mark_error(conn["id"], error, needs_attention=token_problem)
     if newly_flagged:
         notify_whatsapp_problem(conn, error)
 
 
-__all__ = ["handle_payload", "iter_events", "session_id_for", "GraphResult"]
+__all__ = ["GraphResult", "handle_payload", "iter_events", "session_id_for"]

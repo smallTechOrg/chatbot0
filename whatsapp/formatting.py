@@ -5,6 +5,7 @@ WhatsApp: *bold*, _italic_, ~strike~, ```mono```, "- " and "1. " lists, "> " quo
 It has no headings and no links syntax, so "**x**" and "## x" would show as
 literal characters.
 """
+
 from __future__ import annotations
 
 import re

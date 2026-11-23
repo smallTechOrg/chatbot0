@@ -1,21 +1,25 @@
+"""Chat endpoints: POST /chat, GET /history, and the leads endpoints the dashboard uses (/chat-info)."""
 
+import logging
 from http import HTTPStatus
-import traceback
+
 from flask import Blueprint, jsonify, request
 from werkzeug.exceptions import HTTPException
+
 from api.models import APIResponse
-from history import get_history
-from leads import get_all_chat_info
-from leads_update import update_chat_info, update_contact_info
-from llm_api import get_groq_response
-from api.validators import validate_contact_data, validate_history_data, validate_update_data, chat_api_validate
+from api.validators import chat_api_validate, validate_contact_data, validate_history_data, validate_update_data
+from chat.engine import get_groq_response
+from chat.history import get_history
+from leads.repository import get_all_chat_info, update_chat_info, update_contact_info
+
+logger = logging.getLogger(__name__)
 
 chat_bp = Blueprint("chat", __name__)
 
-#Rendering response
-# chat_api is a Flask route function defined that acts as the backend API endpoint for chat exchanges. It is the API endpoint your frontend calls to send user messages and receive chatbot responses.
-# It receives a JSON request containing the user's chat input from the frontend, validates the input, sends the validated input to the LLM, and returns a JSON response.
-@chat_bp.route('/chat', methods=['POST'])
+
+# POST /chat: the endpoint the widget calls. Validates the JSON body (input, session, origin),
+# sends the message through the chat engine and returns the bot's reply as JSON.
+@chat_bp.route("/chat", methods=["POST"])
 def chat_api():
     # Validation uses the database. Keep it in the try block.
     try:
@@ -25,23 +29,22 @@ def chat_api():
 
         # Get response from LLM
         data = request.get_json()
-        input = data.get('input', '')
-        session_id = data.get('session_id')
+        input = data.get("input", "")
+        session_id = data.get("session_id")
         request_type = chat_validation_response.data["request_type"]
         domain = chat_validation_response.data["domain"]
 
         bot_response = get_groq_response(input.strip(), session_id, request_type, domain)
-        return APIResponse(None,{'response': bot_response}).response(HTTPStatus.OK)
+        return APIResponse(None, {"response": bot_response}).response(HTTPStatus.OK)
     except HTTPException:
         # A bad request already has the correct status code. Do not change it.
         raise
     except Exception as e:
-        print(f"Error during LLM call: {e}")
-        print(traceback.format_exc())
+        logger.exception(f"Error during LLM call: {e}")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
-@chat_bp.route('/chat-info', methods=['PATCH'])
+@chat_bp.route("/chat-info", methods=["PATCH"])
 def patch_updates():
     try:
         chat_info_validation_response = validate_update_data(request)
@@ -53,15 +56,15 @@ def patch_updates():
         remarks = data.get("remarks")
         is_active = data.get("is_active")
         update_chat_info(session_id, status, remarks, is_active)
-        return APIResponse(None,{'message': "chat-info updated"}).response(HTTPStatus.OK)
+        return APIResponse(None, {"message": "chat-info updated"}).response(HTTPStatus.OK)
     except HTTPException:
         raise
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
-@chat_bp.route('/chat-info/contact', methods=['PATCH'])
+@chat_bp.route("/chat-info/contact", methods=["PATCH"])
 def patch_contact_info():
     try:
         contact_validation_response = validate_contact_data(request)
@@ -69,27 +72,26 @@ def patch_contact_info():
             return APIResponse(contact_validation_response).response(HTTPStatus.BAD_REQUEST)
         data = request.get_json()
         session_id = data.get("session_id")
-        name    = data.get("name")
-        email   = data.get("email")
-        mobile  = data.get("mobile")
+        name = data.get("name")
+        email = data.get("email")
+        mobile = data.get("mobile")
         country = data.get("country")
         update_contact_info(session_id, name, email, mobile, country)
-        return APIResponse(None, {'message': "contact info updated"}).response(HTTPStatus.OK)
+        return APIResponse(None, {"message": "contact info updated"}).response(HTTPStatus.OK)
     except HTTPException:
         raise
     except Exception:
-        print(traceback.format_exc())
+        logger.exception("Unhandled error")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
-@chat_bp.route('/chat-info', methods=['GET'])
+@chat_bp.route("/chat-info", methods=["GET"])
 def get_chat_info():
     try:
-        leads_data, status = get_all_chat_info()
-        return APIResponse(None,{'leads': leads_data}).response(HTTPStatus.OK)
+        leads_data, _status = get_all_chat_info()
+        return APIResponse(None, {"leads": leads_data}).response(HTTPStatus.OK)
     except Exception as e:
-        print(f"Error in get_leads endpoint: {e}")
-        print(traceback.format_exc())
+        logger.exception(f"Error in get_leads endpoint: {e}")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
@@ -107,6 +109,5 @@ def history_endpoint():
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error in history endpoint: {e}")
-        print(traceback.format_exc())
+        logger.exception(f"Error in history endpoint: {e}")
         return APIResponse().response(HTTPStatus.INTERNAL_SERVER_ERROR)

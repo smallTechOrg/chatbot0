@@ -11,18 +11,21 @@ audience is config.JOBS_OIDC_AUDIENCE and whose email is one of
 config.JOBS_ALLOWED_INVOKERS. Cloud Scheduler adds that token itself when the
 job is created with --oidc-service-account-email.
 """
+
 import contextlib
+import logging
 import threading
-import traceback
-from typing import Iterator
+from collections.abc import Iterator
 
 import psycopg
 from flask import Blueprint, jsonify, request
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token
 
-import config
-from periodic_summary import periodic_summary
+from core import config
+from summary.periodic import periodic_summary
+
+logger = logging.getLogger(__name__)
 
 jobs_bp = Blueprint("jobs", __name__, url_prefix="/jobs")
 
@@ -55,9 +58,7 @@ def verify_invoker(auth_header: str) -> str:
         raise PermissionError("missing bearer token")
 
     try:
-        claims = id_token.verify_oauth2_token(
-            token, _google_request, audience=config.JOBS_OIDC_AUDIENCE
-        )
+        claims = id_token.verify_oauth2_token(token, _google_request, audience=config.JOBS_OIDC_AUDIENCE)
     except Exception as exc:  # expired, wrong audience, bad signature, ...
         raise PermissionError(f"invalid token: {exc}") from exc
 
@@ -87,18 +88,14 @@ def single_run_lock() -> Iterator[None]:
             application_name=f"{config.DB_APPLICATION_NAME}-job-lock",
             autocommit=True,
         ) as conn:
-            got = conn.execute(
-                "SELECT pg_try_advisory_lock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,)
-            ).fetchone()[0]
+            got = conn.execute("SELECT pg_try_advisory_lock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,)).fetchone()[0]
             if not got:
                 raise JobAlreadyRunning()
             try:
                 yield
             finally:
                 with contextlib.suppress(Exception):
-                    conn.execute(
-                        "SELECT pg_advisory_unlock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,)
-                    )
+                    conn.execute("SELECT pg_advisory_unlock(%s)", (PERIODIC_SUMMARY_LOCK_KEY,))
     finally:
         _local_lock.release()
 
@@ -118,22 +115,21 @@ def run_periodic_summary():
     try:
         caller = verify_invoker(request.headers.get("Authorization", ""))
     except PermissionError as exc:
-        print(f"[JOBS] periodic summary refused: {exc}")
+        logger.info(f"[JOBS] periodic summary refused: {exc}")
         return jsonify({"error": "unauthorized"}), 401
 
-    print(f"[JOBS] periodic summary requested by {caller}")
+    logger.info(f"[JOBS] periodic summary requested by {caller}")
     try:
         with single_run_lock():
             result = periodic_summary()
     except JobAlreadyRunning:
-        print("[JOBS] periodic summary already running; skipped")
+        logger.info("[JOBS] periodic summary already running; skipped")
         return jsonify({"status": "skipped", "reason": "already running"}), 409
     except psycopg.OperationalError as exc:
-        print(f"[JOBS] periodic summary could not reach the database: {exc}")
+        logger.error(f"[JOBS] periodic summary could not reach the database: {exc}")
         return jsonify({"status": "failed", "error": "database unavailable"}), 503
     except Exception as exc:
-        print(f"[JOBS] periodic summary failed: {exc}")
-        print(traceback.format_exc())
+        logger.exception(f"[JOBS] periodic summary failed: {exc}")
         return jsonify({"status": "failed", "error": str(exc)}), 500
 
     # Counts only: the sessions themselves hold visitor details.
@@ -149,5 +145,5 @@ def run_periodic_summary():
         )
     }
     counts["slack_sent"] = (result.get("slack") or {}).get("sent", 0)
-    print(f"[JOBS] periodic summary finished: {counts}")
+    logger.info(f"[JOBS] periodic summary finished: {counts}")
     return jsonify({"status": "ok", **counts}), 200

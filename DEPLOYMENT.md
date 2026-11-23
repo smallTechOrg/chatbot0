@@ -69,7 +69,7 @@ You can re-run a deploy by hand: Actions → *Deploy to Cloud Run* → *Run work
 - **Plain settings** (`APP_ENV`, `DB_NAME`, `DASHBOARD_URL`, `SCHEDULER_ENABLED=false`, the job auth
   settings, `GROQ_MODEL_NAME`, ...) are written by the *Write service
   environment* step of the workflow. Every setting and its default is
-  declared in `config.py`; `.env.example` lists them.
+  declared in `core/config.py`; `.env.example` lists them.
 - **Sizing**: 1 vCPU, 1 GiB, 8 concurrent requests per instance (= gunicorn's
   8 threads; `CLOUD_RUN_CONCURRENCY` to change it), 900s request timeout. Instances kept warm come from the
   environment's `CLOUD_RUN_MIN_INSTANCES`; both are `0`, so the first request
@@ -293,7 +293,7 @@ gcloud logging read 'resource.type="cloud_run_revision"
 ```
 
 **Connection pool settings.** Every environment-driven setting in this app is
-declared in `config.py` with its default; `.env` carries values only. See
+declared in `core/config.py` with its default; `.env` carries values only. See
 `.env.example` for the full list. The ones that matter most:
 
 | Variable | Default | Purpose |

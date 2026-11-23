@@ -7,18 +7,19 @@ Public surface
 - ``DomainService``     – business logic layer
 - Domain-specific exceptions for use in the controller layer
 """
+
 from domains.repository import DomainRepository
 from domains.service import (
-    DomainService,
     DomainAlreadyExistsError,
+    DomainService,
     InvalidWebsiteURLError,
     ParentDomainNotFoundError,
 )
 
 __all__ = [
+    "DomainAlreadyExistsError",
     "DomainRepository",
     "DomainService",
-    "DomainAlreadyExistsError",
     "InvalidWebsiteURLError",
     "ParentDomainNotFoundError",
 ]

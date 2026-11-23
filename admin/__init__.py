@@ -12,6 +12,7 @@ exist. The session cookie is signed with a key derived from
 CHATBOT0_SECRET_KEY; every POST carries a CSRF token. Credentials entered here
 are encrypted before they are stored and are never shown again.
 """
+
 from __future__ import annotations
 
 import functools
@@ -20,11 +21,10 @@ import re
 import secrets
 import unicodedata
 
-from flask import (Blueprint, abort, flash, redirect, render_template, request,
-                   session, url_for)
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 
-import config
-from db_pool import with_connection
+from core import config
+from core.db_pool import with_connection
 from whatsapp import repository
 from whatsapp.client import OUTSIDE_SERVICE_WINDOW, check_number, send_text
 
@@ -36,7 +36,7 @@ _RECIPIENT = re.compile(r"^\+?\d{7,15}$")
 # Graph API codes with a known fix, shown next to a failed test message.
 _SEND_HINTS = {
     OUTSIDE_SERVICE_WINDOW: "The recipient has not messaged this number in the last 24 hours. "
-                            "Send any message to the business number from that phone first, then retry.",
+    "Send any message to the business number from that phone first, then retry.",
     131030: "On a Meta test number, only recipients added under API Setup > 'To' can receive messages.",
     190: "The access token is invalid or expired. Replace it below.",
 }
@@ -79,6 +79,7 @@ def _csrf():
         if "csrf" not in session:
             session["csrf"] = secrets.token_urlsafe(32)
         return session["csrf"]
+
     return {"csrf_token": csrf_token}
 
 
@@ -88,6 +89,7 @@ def login_required(view):
         if not session.get("admin"):
             return redirect(url_for("admin.login", next=request.path))
         return view(*args, **kwargs)
+
     return wrapper
 
 
@@ -137,8 +139,11 @@ def _check(connection_id: str, phone_number_id: str, token: str) -> bool:
     if result.ok:
         data = result.data or {}
         repository.mark_checked(connection_id, data.get("display_phone_number"), data.get("verified_name"))
-        flash(f"Token works for {data.get('display_phone_number') or phone_number_id}"
-              f"{' (' + data['verified_name'] + ')' if data.get('verified_name') else ''}.", "ok")
+        flash(
+            f"Token works for {data.get('display_phone_number') or phone_number_id}"
+            f"{' (' + data['verified_name'] + ')' if data.get('verified_name') else ''}.",
+            "ok",
+        )
         return True
     repository.mark_error(connection_id, result.error or "check failed", needs_attention=True)
     flash(f"Graph API check failed: {result.error}", "error")
@@ -153,9 +158,11 @@ def whatsapp_list():
         f = {k: _clean(request.form.get(k) or "") for k in ("domain_key", "access_token", "app_secret")}
         f["phone_number_id"] = _clean_id(raw_id)
         if not _DIGITS.match(f["phone_number_id"]):
-            flash(f"Phone number ID must be the long numeric ID from WhatsApp > API Setup (not the phone "
-                  f"number). Received {len(raw_id)} characters: {raw_id.encode('unicode_escape').decode()[:80]}",
-                  "error")
+            flash(
+                f"Phone number ID must be the long numeric ID from WhatsApp > API Setup (not the phone "
+                f"number). Received {len(raw_id)} characters: {raw_id.encode('unicode_escape').decode()[:80]}",
+                "error",
+            )
         elif not all(f.values()):
             flash("All four fields are required.", "error")
         else:
@@ -168,16 +175,21 @@ def whatsapp_list():
             else:
                 _check(created["id"], f["phone_number_id"], f["access_token"])
                 return redirect(url_for("admin.whatsapp_detail", connection_id=created["id"]))
-    return render_template("admin/whatsapp_list.html", connections=repository.list_connections(),
-                           domain_keys=_domain_keys(), form=request.form)
+    return render_template(
+        "admin/whatsapp_list.html",
+        connections=repository.list_connections(),
+        domain_keys=_domain_keys(),
+        form=request.form,
+    )
 
 
 @admin_bp.route("/whatsapp/<connection_id>")
 @login_required
 def whatsapp_detail(connection_id):
     connection = repository.get_connection(connection_id) or abort(404)
-    return render_template("admin/whatsapp_detail.html", c=connection, webhook_url=_webhook_url(connection_id),
-                           domain_keys=_domain_keys())
+    return render_template(
+        "admin/whatsapp_detail.html", c=connection, webhook_url=_webhook_url(connection_id), domain_keys=_domain_keys()
+    )
 
 
 @admin_bp.route("/whatsapp/<connection_id>/credentials", methods=["POST"])

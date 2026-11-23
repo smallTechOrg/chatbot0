@@ -1,7 +1,11 @@
+"""GET /health: the app and the database, for Cloud Run and the deploy smoke test."""
+
+import contextlib
+
 from flask import Blueprint, jsonify
 
-import config
-from db_pool import get_connection, get_pool
+from core import config
+from core.db_pool import get_connection, get_pool
 
 health_bp = Blueprint("health", __name__)
 
@@ -22,19 +26,16 @@ def health():
     }
 
     try:
-        with get_connection(attempts=1, timeout=config.DB_HEALTH_TIMEOUT) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT 1")
-                cur.fetchone()
+        with get_connection(attempts=1, timeout=config.DB_HEALTH_TIMEOUT) as conn, conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
         status["database"] = "connected"
         code = 200
     except Exception as e:
         status["database_error"] = str(e)
         code = 503
 
-    try:
+    with contextlib.suppress(Exception):  # the pool could not even be built
         status["pool"] = get_pool().get_stats()
-    except Exception:  # the pool could not even be built
-        pass
 
     return jsonify(status), code

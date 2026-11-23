@@ -10,18 +10,18 @@ Rules enforced here:
 The service depends on ``DomainRepository`` via constructor injection so that
 tests can provide a mock without touching the database.
 """
+
 from __future__ import annotations
 
 import re
-from typing import Optional
 from urllib.parse import urlparse
 
 from domains.repository import DomainRepository
 
-
 # ---------------------------------------------------------------------------
 # Domain-specific exceptions
 # ---------------------------------------------------------------------------
+
 
 class DomainAlreadyExistsError(Exception):
     """Raised when a domain with the same extracted address already exists."""
@@ -38,6 +38,7 @@ class InvalidWebsiteURLError(Exception):
 # ---------------------------------------------------------------------------
 # Service
 # ---------------------------------------------------------------------------
+
 
 class DomainService:
     """
@@ -56,9 +57,9 @@ class DomainService:
     def add_domain(
         self,
         website_url: str,
-        key: Optional[str] = None,
-        parent_id: Optional[int] = None,
-        contact: Optional[dict] = None,
+        key: str | None = None,
+        parent_id: int | None = None,
+        contact: dict | None = None,
     ) -> dict:
         """
         Validate, extract and persist a new domain derived from *website_url*.
@@ -97,22 +98,14 @@ class DomainService:
             # have written this one and stopped before the www variant, which
             # then no request can reach. Finish it here, so a retry repairs the
             # registration instead of failing on the address that exists.
-            self._ensure_www(
-                address, existing.get("key"), existing.get("parent_id")
-            )
-            raise DomainAlreadyExistsError(
-                f"A domain for '{address}' already exists."
-            )
+            self._ensure_www(address, existing.get("key"), existing.get("parent_id"))
+            raise DomainAlreadyExistsError(f"A domain for '{address}' already exists.")
 
         if parent_id is not None and self._repo.find_by_id(parent_id) is None:
-            raise ParentDomainNotFoundError(
-                f"Parent domain with id={parent_id} does not exist."
-            )
+            raise ParentDomainNotFoundError(f"Parent domain with id={parent_id} does not exist.")
 
         resolved_key = self._resolve_key(key, address)
-        domain = self._repo.create(
-            key=resolved_key, address=address, parent_id=parent_id, **(contact or {})
-        )
+        domain = self._repo.create(key=resolved_key, address=address, parent_id=parent_id, **(contact or {}))
 
         # Register the www variant too, under the same key, so a lookup gives
         # the same key with or without the prefix.
@@ -120,7 +113,7 @@ class DomainService:
 
         return domain
 
-    def get_domain(self, domain_id: int) -> Optional[dict]:
+    def get_domain(self, domain_id: int) -> dict | None:
         """Return the domain with *domain_id*, or ``None`` if not found."""
         return self._repo.find_by_id(domain_id)
 
@@ -132,7 +125,7 @@ class DomainService:
     # Static helpers – kept on the class so tests can call them directly.
     # ------------------------------------------------------------------
 
-    def _ensure_www(self, address: str, key: str, parent_id: Optional[int]) -> None:
+    def _ensure_www(self, address: str, key: str, parent_id: int | None) -> None:
         """Add the www variant of *address* if it is not there yet."""
         www_address = f"www.{address}"
         if self._repo.find_by_address(www_address) is None:
@@ -166,20 +159,16 @@ class DomainService:
             url = f"https://{url}"
 
         parsed = urlparse(url)
-        hostname: Optional[str] = parsed.hostname  # lowercased, port stripped
+        hostname: str | None = parsed.hostname  # lowercased, port stripped
 
         if not hostname:
-            raise InvalidWebsiteURLError(
-                f"Cannot extract a hostname from: {website_url!r}"
-            )
+            raise InvalidWebsiteURLError(f"Cannot extract a hostname from: {website_url!r}")
 
         if hostname.startswith("www."):
             hostname = hostname[4:]
 
         if "." not in hostname:
-            raise InvalidWebsiteURLError(
-                f"Extracted hostname '{hostname}' is not a valid domain (no TLD)."
-            )
+            raise InvalidWebsiteURLError(f"Extracted hostname '{hostname}' is not a valid domain (no TLD).")
 
         return hostname
 
@@ -204,7 +193,7 @@ class DomainService:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _resolve_key(self, raw_key: Optional[str], address: str) -> str:
+    def _resolve_key(self, raw_key: str | None, address: str) -> str:
         """Return the caller-supplied key (normalised) or auto-generate one."""
         if raw_key and raw_key.strip():
             return raw_key.strip().upper()

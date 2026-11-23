@@ -160,6 +160,21 @@ onto `/chatbot0/`. Canonical and Open Graph URLs always use
 https://chatbot0.smalltech.in. The pages take no input and never touch the
 database or the LLM.
 
+## Code layout
+
+```
+app.py          create_app(): wires blueprints, database bootstrap, scheduler
+core/           config (every env setting), db_pool, schema (table bootstrap), crypto, paths
+chat/           the chat engine (engine, history, prompts, prompt_store, lead_capture, contact_validation)
+leads/          lead queries and updates (repository)
+summary/        periodic summary, Slack messages, scheduler
+domains/        domains resource (schemas, service, repository)
+whatsapp/       WhatsApp Cloud API (client, formatting, repository, service)
+admin/          admin pages (to be replaced by the Next.js app)
+api/            HTTP only: parse the request, call the code above, shape the response
+test/           pytest suite (needs a local PostgreSQL)
+```
+
 ## WhatsApp
 
 chatbot0 also answers on WhatsApp (Meta Cloud API), with the same prompts,

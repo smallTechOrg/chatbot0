@@ -2,11 +2,10 @@
 Data access for the Domains resource. All SQL is here. Each method takes a
 connection from the pool for one query. The repository keeps no connection.
 """
+
 from __future__ import annotations
 
-from typing import Optional
-
-from db_pool import run_with_retry
+from core.db_pool import run_with_retry
 
 
 class DomainRepository:
@@ -19,14 +18,13 @@ class DomainRepository:
     # Queries
     # ------------------------------------------------------------------
 
-    def find_by_address(self, address: str) -> Optional[dict]:
+    def find_by_address(self, address: str) -> dict | None:
         """Return the domain record matching *address*, or ``None``."""
 
         def query(conn):
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, key, address, parent, created_at "
-                    "FROM domains WHERE address = %s;",
+                    "SELECT id, key, address, parent, created_at FROM domains WHERE address = %s;",
                     (address,),
                 )
                 return cur.fetchone()
@@ -34,14 +32,13 @@ class DomainRepository:
         row = run_with_retry(query, label="DomainRepository.find_by_address")
         return self._to_dict(row) if row else None
 
-    def find_by_id(self, domain_id: int) -> Optional[dict]:
+    def find_by_id(self, domain_id: int) -> dict | None:
         """Return the domain record with the given primary key, or ``None``."""
 
         def query(conn):
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT id, key, address, parent, created_at "
-                    "FROM domains WHERE id = %s;",
+                    "SELECT id, key, address, parent, created_at FROM domains WHERE id = %s;",
                     (domain_id,),
                 )
                 return cur.fetchone()
@@ -54,10 +51,7 @@ class DomainRepository:
 
         def query(conn):
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT id, key, address, parent, created_at "
-                    "FROM domains ORDER BY created_at ASC;"
-                )
+                cur.execute("SELECT id, key, address, parent, created_at FROM domains ORDER BY created_at ASC;")
                 return cur.fetchall()
 
         return [self._to_dict(row) for row in run_with_retry(query, label="DomainRepository.list_all")]
@@ -70,10 +64,10 @@ class DomainRepository:
         self,
         key: str,
         address: str,
-        parent_id: Optional[int] = None,
-        contact_name: Optional[str] = None,
-        email: Optional[str] = None,
-        mobile: Optional[str] = None,
+        parent_id: int | None = None,
+        contact_name: str | None = None,
+        email: str | None = None,
+        mobile: str | None = None,
     ) -> dict:
         """
         Add a domain row and return it. Raise UniqueViolation if the address
@@ -94,9 +88,7 @@ class DomainRepository:
                 )
                 return cur.fetchone()
 
-        return self._to_dict(
-            run_with_retry(insert, attempts=1, label="DomainRepository.create")
-        )
+        return self._to_dict(run_with_retry(insert, attempts=1, label="DomainRepository.create"))
 
     # ------------------------------------------------------------------
     # Helpers
@@ -110,6 +102,6 @@ class DomainRepository:
             "id": id_,
             "key": key,
             "address": address,
-            "parent_id": parent,    # alias: DB column is "parent"
+            "parent_id": parent,  # alias: DB column is "parent"
             "created_at": created_at,
         }
