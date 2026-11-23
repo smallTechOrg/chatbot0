@@ -20,7 +20,7 @@ def _required(name: str) -> str:
     """
     value = os.getenv(name, "").strip()
     if not value:
-        raise RuntimeError(f"{name} is not set (see code/.env.example)")
+        raise RuntimeError(f"{name} is not set (see .env.example)")
     return value
 
 
@@ -78,7 +78,7 @@ CHATBOT0_SECRET_KEY = os.getenv("CHATBOT0_SECRET_KEY", "").strip()
 CHATBOT0_ADMIN_PASSWORD = os.getenv("CHATBOT0_ADMIN_PASSWORD", "").strip()
 
 # ---------------------------------------------------------------------------
-# WhatsApp (Cloud API, see code/whatsapp/)
+# WhatsApp (Cloud API, see whatsapp/)
 # ---------------------------------------------------------------------------
 # Numbers, tokens and app secrets are per connection, in the database (added on
 # the admin page), not here.
@@ -105,7 +105,7 @@ DASHBOARD_URL = _required("DASHBOARD_URL")
 SUMMARY_WINDOW_DAYS = int(os.getenv("SUMMARY_WINDOW_DAYS", "7"))
 
 # ---------------------------------------------------------------------------
-# Scheduler (see code/scheduler.py)
+# Scheduler (see scheduler.py)
 # ---------------------------------------------------------------------------
 # When the periodic summary job runs, as a five-field cron pattern
 # (minute hour day month weekday). Default: at the start of every hour.
@@ -120,7 +120,7 @@ PERIODIC_SUMMARY_TIMEZONE = os.getenv("PERIODIC_SUMMARY_TIMEZONE", "Asia/Kolkata
 SCHEDULER_ENABLED = os.getenv("SCHEDULER_ENABLED", "true").lower() == "true"
 
 # ---------------------------------------------------------------------------
-# Job endpoints (see code/api/jobs.py)
+# Job endpoints (see api/jobs.py)
 # ---------------------------------------------------------------------------
 # A job call must carry a Google-signed OIDC token with this audience, issued
 # to one of the service accounts in JOBS_ALLOWED_INVOKERS (comma-separated).
@@ -146,7 +146,7 @@ def _redact_password(url: str) -> str:
 print("Connecting to:", _redact_password(DATABASE_URL))
 
 # ---------------------------------------------------------------------------
-# Database connection pool (see code/db_pool.py)
+# Database connection pool (see db_pool.py)
 # ---------------------------------------------------------------------------
 
 # The database is a small shared instance. Keep the pool small. Do not set the
