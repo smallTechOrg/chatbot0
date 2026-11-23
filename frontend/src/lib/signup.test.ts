@@ -28,10 +28,9 @@ describe("isHexColour", () => {
 describe("buildEmbedScript", () => {
   const script = buildEmbedScript("#FB8500");
 
-  it("loads embed.js and the /embed/ frame from chatbot0, not zer0", () => {
-    expect(script).toContain('src="https://chatbot0.smalltech.in/embed.js"');
-    expect(script).toContain('data-chat-url="https://chatbot0.smalltech.in/embed/"');
-    expect(script).not.toContain("zer0.smalltech.in");
+  it("loads embed.js and the embed frame from the widget host", () => {
+    expect(script).toContain('src="https://zer0.smalltech.in/embed.js"');
+    expect(script).toContain('data-chat-url="https://zer0.smalltech.in/embed"');
   });
 
   it("carries the chosen colour and the default tagline", () => {

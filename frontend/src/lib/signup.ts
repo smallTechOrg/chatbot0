@@ -1,6 +1,6 @@
 // Pure helpers for the sign-up form: validation and the embed snippet.
 
-import { WIDGET_ORIGIN } from "@/content/site";
+import { WIDGET_FRAME_PATH, WIDGET_ORIGIN } from "@/content/site";
 
 export type ContactMethod = "email" | "phone";
 
@@ -29,7 +29,7 @@ export function buildEmbedScript(colour: string): string {
   return [
     "<script",
     `  src="${WIDGET_ORIGIN}/embed.js"`,
-    `  data-chat-url="${WIDGET_ORIGIN}/embed/"`,
+    `  data-chat-url="${WIDGET_ORIGIN}${WIDGET_FRAME_PATH}"`,
     `  data-colour="${colour}"`,
     '  data-tagline="Chat with us"',
     "  defer",
