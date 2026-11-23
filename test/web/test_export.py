@@ -177,3 +177,56 @@ def test_signup_api_calls_reach_the_api_on_the_chatbot0_host(client, path):
 
 def test_health_is_unchanged_on_the_chatbot0_host(client):
     assert client.get("/health", headers=HOST).status_code == client.get("/health").status_code
+
+
+# ---------------------------------------------------------------- the chat widget
+
+
+def test_embed_frame_is_served(client):
+    res = client.get("/embed/?host=https%3A%2F%2Fexample.com&color=%23219EBC")
+    assert res.status_code == 200 and res.mimetype == "text/html"
+    html = res.get_data(as_text=True)
+    assert "<title>chatbot0 chat</title>" in html
+    assert 'content="noindex' in html  # the frame is not a page to index
+
+
+def test_embed_frame_works_without_the_trailing_slash(client):
+    assert client.get("/embed").status_code == 200
+
+
+def test_embed_js_is_served_as_javascript_with_chatbot0_as_the_default_frame(client):
+    res = client.get("/embed.js")
+    assert res.status_code == 200
+    assert "javascript" in res.mimetype
+    js = res.get_data(as_text=True)
+    assert '"https://chatbot0.smalltech.in/embed/"' in js
+    # snippets installed before the widget moved still name zer0's frame; they are followed to the new one
+    assert "zer0\\.smalltech\\.in\\/embed" in js
+    # the contract with the frame: host origin and colour in the query, close and analytics messages back
+    assert "?host=" in js and "&color=" in js
+    assert "CLOSE_CHAT" in js and "ANALYTICS_EVENT" in js and "SEND_MESSAGE" in js
+
+
+def test_signup_snippet_points_at_chatbot0s_widget(client):
+    chunks = "".join(p.read_text(errors="ignore") for p in (FRONTEND_DIR / "_next" / "static" / "chunks").rglob("*.js"))
+    assert "https://chatbot0.smalltech.in" in chunks and "/embed.js" in chunks
+
+
+def test_widget_chat_contract_origin_selects_the_domain(client, monkeypatch):
+    """The widget calls POST /chat?origin=<host site> and GET /history?origin=...: the API keeps taking both."""
+    from api import chat as chat_api
+
+    seen = {}
+
+    def fake_reply(text, session_id, request_type, domain):
+        seen["domain"] = domain
+        return "stubbed"
+
+    monkeypatch.setattr(chat_api, "get_groq_response", fake_reply)
+    res = client.post(
+        "/chat?origin=https%3A%2F%2Fexample.com",
+        json={"input": "hi", "session_id": "0b8a6c0e-7a3c-4a5e-9d8f-111111111111", "request_type": "sales"},
+    )
+    assert res.status_code == 200
+    assert res.get_json()["success"] is True
+    assert seen["domain"]
