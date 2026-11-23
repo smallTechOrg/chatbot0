@@ -1,5 +1,14 @@
 # Image for the Zer0 sales agent on Cloud Run.
 # Built and deployed by .github/workflows/deploy.yml.
+# Stage 1: build the Next.js frontend into a static export (frontend/out).
+FROM node:22-slim AS web
+WORKDIR /web
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# Stage 2: the Flask app, which also serves the export.
 FROM python:3.12.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -15,6 +24,9 @@ RUN pip install -r requirements.txt
 # The app reads prompts/, templates/ and static/ relative to this directory.
 # .dockerignore keeps tests, docs, scripts and local files out.
 COPY . .
+
+# The built frontend. Flask serves it for every path that no API route matches (web/).
+COPY --from=web /web/out /app/frontend_out
 
 # Run as an unprivileged user.
 RUN useradd --system --uid 10001 app && chown -R app /app

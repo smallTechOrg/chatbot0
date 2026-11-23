@@ -13,3 +13,7 @@ venv/
 .envrc
 # For macOS
 .DS_Store
+
+# Claude Code local settings (usage gate)
+.claude/settings.local.json
+frontend_out/

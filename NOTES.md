@@ -20,3 +20,19 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   pages copy along (LRM marks, NBSP, zero-width). Fix: drop Unicode Zs/Cf characters and an "ID:"
   label from every pasted credential; show what was received when it still fails. Lesson: never
   validate a pasted value with only `.strip()`; test with invisible characters.
+
+## R2 (frontend)
+
+- **`node` not found / "No version is set".** The repo's asdf `.tool-versions` had no nodejs.
+  Fix: add `nodejs 22.16.0`. Lesson: pin every runtime in `.tool-versions`.
+- **BSD sed.** `sed -i 's/..' file` fails on macOS ("undefined label"). Use `sed -i ''`.
+- **zsh `--include=*.py` unquoted** gives "no matches found" before grep runs. Quote globs.
+- **Safety check false positive.** A long heredoc writing several .tsx files was refused as a
+  "dangerous removal" although it deleted nothing. Fix: write those files with the Write tool.
+- **Static export and the 404 page.** `next build` emits both `404.html` and `404/index.html`;
+  `web/` must not serve the latter as a page, or `/404/` answers 200.
+- **A 404 raised inside an API route** (`abort(404)`) also reaches the app's 404 handler. The
+  frontend handler only answers when no route matched (`request.url_rule is None`); the rest goes
+  to flask-smorest's handler so API errors stay JSON.
+- **Process.** The owner merged PR #86 while R2 slice 1 was in progress; the slice was moved
+  onto its own branch from `origin/main` (cherry-pick) and the rules in spec/roadmap.md updated.
