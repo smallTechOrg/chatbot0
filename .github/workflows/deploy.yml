@@ -50,6 +50,21 @@ jobs:
       - run: pip install -r requirements.txt
       - run: ruff check .
       - run: ruff format --check .
+      # The frontend is built before pytest: a broken frontend fails before deploy, and the
+      # tests that check the exported pages read frontend/out.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Frontend checks and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npx tsc --noEmit
+          npm run lint
+          npm test
+          npm run build
       - run: pytest -q test
 
   deploy:

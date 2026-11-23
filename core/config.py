@@ -9,6 +9,7 @@ and what belongs in ``.env`` -- which carries values only, never definitions.
 import os
 import re
 from enum import Enum
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -56,6 +57,30 @@ PORT = int(os.getenv("PORT", "5001"))
 # Set by Werkzeug in the process that serves requests when the debug reloader
 # is on. The watcher parent does not have it. See the __main__ block in app.py.
 WERKZEUG_RUN_MAIN = os.getenv("WERKZEUG_RUN_MAIN") == "true"
+
+# ---------------------------------------------------------------------------
+# Frontend (the Next.js static export, see web/)
+# ---------------------------------------------------------------------------
+_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _frontend_dir() -> Path:
+    """
+    Where Flask finds the exported frontend. FRONTEND_DIR wins (relative paths
+    start at the repo root). Otherwise frontend_out, which the Docker image
+    fills, then frontend/out, which `npm run build` writes for local runs.
+    """
+    configured = os.getenv("FRONTEND_DIR", "").strip()
+    if configured:
+        path = Path(configured)
+        return path if path.is_absolute() else _ROOT / path
+    for candidate in ("frontend_out", "frontend/out"):
+        if (_ROOT / candidate).is_dir():
+            return _ROOT / candidate
+    return _ROOT / "frontend_out"
+
+
+FRONTEND_DIR = _frontend_dir()
 
 # ---------------------------------------------------------------------------
 # LLM (Groq)
