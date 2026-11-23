@@ -1,3 +1,5 @@
+"""The Flask app: wires logging, the database bootstrap, blueprints, CORS and the scheduler."""
+
 import logging
 from datetime import timedelta
 

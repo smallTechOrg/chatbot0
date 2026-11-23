@@ -1,3 +1,5 @@
+"""Chat memory: per-session message history stored in Postgres, and the /history payload."""
+
 from http import HTTPStatus
 
 from langchain_core.messages import BaseMessage

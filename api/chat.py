@@ -1,3 +1,5 @@
+"""Chat endpoints: POST /chat, GET /history, and the leads endpoints the dashboard uses (/chat-info)."""
+
 import logging
 from http import HTTPStatus
 

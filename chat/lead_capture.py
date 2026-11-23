@@ -1,3 +1,5 @@
+"""Lead capture: after each message, ask the LLM whether it contained contact details and save them."""
+
 import json
 import logging
 from datetime import datetime

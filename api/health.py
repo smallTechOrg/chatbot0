@@ -1,3 +1,5 @@
+"""GET /health: the app and the database, for Cloud Run and the deploy smoke test."""
+
 import contextlib
 
 from flask import Blueprint, jsonify

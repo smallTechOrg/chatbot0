@@ -1,3 +1,5 @@
+"""The legacy Swagger UI served from the static swagger.yaml."""
+
 from flask_swagger_ui import get_swaggerui_blueprint
 
 SWAGGER_URL = ""  # URL for exposing Swagger UI

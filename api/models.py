@@ -1,3 +1,5 @@
+"""Response and validation result types shared by the API modules."""
+
 from http import HTTPStatus
 
 from flask import jsonify

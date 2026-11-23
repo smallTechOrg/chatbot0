@@ -1,3 +1,5 @@
+"""SQL for leads (chat_info): list for the dashboard, update status, remarks, activity and contact details."""
+
 import logging
 from http import HTTPStatus
 from typing import Any

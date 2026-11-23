@@ -1,3 +1,5 @@
+"""Prompt endpoints: list prompts, create or update one."""
+
 import logging
 from http import HTTPStatus
 

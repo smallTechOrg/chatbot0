@@ -1,3 +1,5 @@
+"""Request validation for the chat endpoints: input, session id, origin and the domain it maps to."""
+
 import logging
 import uuid
 from http import HTTPStatus

@@ -1,3 +1,5 @@
+"""The prompts table: default prompts, listing, and create-or-update."""
+
 import json
 import logging
 from pathlib import Path

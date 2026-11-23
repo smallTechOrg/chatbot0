@@ -1,3 +1,5 @@
+"""Look up a domain's prompts, inheriting from its parent domain, and build the system prompt."""
+
 import logging
 
 from core.db_pool import with_connection
@@ -16,16 +18,11 @@ Formatting Rules:
 """
 
 
-def get_prompt(domain, agent_type, prompt_type):
-    # Load both prompts from DB
+def get_prompt(domain: str, agent_type: str, prompt_type: str) -> str:
+    """The prompt text for a domain. A domain without its own prompt uses its parent domain's."""
     if prompt_type == "system" and agent_type == "sales":
         common_prompt = load_prompt_from_db(domain, agent_type, "base-prompt")
-        # if common_data is None:
-        #     # Use default or find parent.
-        #     common_data = load_prompt_from_db(DEFAULT_DOMAIN, agent_type, "base-prompt")
         company_prompt = load_prompt_from_db(domain, agent_type, "company")
-        # if company_data is None:
-        #     company_data = load_prompt_from_db(DEFAULT_DOMAIN, agent_type, "company")
 
         parts = []
         if common_prompt:
