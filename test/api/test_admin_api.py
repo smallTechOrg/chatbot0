@@ -162,3 +162,23 @@ def test_moving_validates_its_input(app, setup):
     assert (
         admin.patch("/api/admin/domains/NO_SUCH", json={"tenant_id": setup["b"]["id"]}, headers=csrf).status_code == 404
     )
+
+
+def test_each_tenant_lists_its_websites_with_parent_and_www_alias(app, world, setup):
+    a = setup["a"]
+    sql("UPDATE domains SET address = %s WHERE key = %s", (f"{a['key'].lower()}.site.invalid", a["key"]))
+    world.domain(a["id"], a["key"], f"www.{a['key'].lower()}.site.invalid")
+    sql(
+        "UPDATE domains SET parent = (SELECT id FROM domains WHERE key = 'COMMON' ORDER BY id LIMIT 1) WHERE key = %s",
+        (a["key"],),
+    )
+    admin, _ = as_user(app, "root@admin-test.invalid")
+    tenants = {t["id"]: t for t in admin.get("/api/admin/tenants").get_json()["tenants"]}
+    mine, other = tenants[a["id"]], tenants[setup["b"]["id"]]
+    assert mine["domain_count"] == 2 and mine["site_count"] == 1
+    main, www = mine["domains"]
+    assert main["address"].endswith(".site.invalid") and main["is_www_alias"] is False
+    assert www["address"].startswith("www.") and www["is_www_alias"] is True
+    assert main["parent_key"] == "COMMON" and main["parent_address"]
+    # Another tenant's websites are never mixed in.
+    assert {d["key"] for d in other["domains"]} == {setup["b"]["key"]}

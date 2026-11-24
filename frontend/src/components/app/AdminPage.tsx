@@ -1,12 +1,42 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { admin, ApiError, whatsapp, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
+import { admin, ApiError, whatsapp, type AdminDomain, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
 import { PLANS } from "@/content/plans";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
 
 // The plan keys are the pricing plans' keys: the server validates them against the same list.
 const PLAN_OPTIONS = PLANS.map((p) => ({ key: p.key, name: p.name }));
+
+/** The websites an account owns: address, key, parent website and whether the row is a www alias. */
+function WebsiteList({ domains }: { domains: AdminDomain[] }) {
+  if (domains.length === 0) return <p className="text-sm text-muted">No websites yet.</p>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <caption className="sr-only">Websites of this account</caption>
+        <thead className="text-xs text-muted">
+          <tr>
+            <th scope="col" className="py-1 pr-4 font-semibold">Address</th>
+            <th scope="col" className="py-1 pr-4 font-semibold">Key</th>
+            <th scope="col" className="py-1 pr-4 font-semibold">Parent</th>
+            <th scope="col" className="py-1 font-semibold">Type</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {domains.map((d) => (
+            <tr key={d.id}>
+              <td className="py-1 pr-4">{d.address}</td>
+              <td className="py-1 pr-4 font-mono text-xs">{d.key}</td>
+              <td className="py-1 pr-4">{d.parent_key ? `${d.parent_key} (${d.parent_address})` : "none"}</td>
+              <td className="py-1">{d.is_www_alias ? "www alias" : "website"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /** A link the admin copies and sends by hand (no email service yet). */
 function LinkBox({ link, onClose }: { link: string; onClose: () => void }) {
@@ -49,7 +79,8 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
           {tenant.enabled ? "Enabled" : "Trial"}
         </span>
         <span className="text-sm text-muted">
-          {tenant.conversations} conversations, {tenant.month_conversations} this month
+          {tenant.site_count} {tenant.site_count === 1 ? "website" : "websites"}
+          {tenant.domain_count !== tenant.site_count ? ` (${tenant.domain_count} rows)` : ""}, {tenant.conversations} conversations, {tenant.month_conversations} this month
           {tenant.monthly_limit === null ? " (no limit)" : ` of ${tenant.monthly_limit}`}
         </span>
         <button type="button" className={`${tenant.enabled ? btnSecondary : btnPrimary} ml-auto`} onClick={() => void run(() => admin.updateTenant(tenant.id, { enabled: !tenant.enabled }))}>
@@ -89,6 +120,15 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
         </div>
         <p className="text-xs text-muted">Sets the monthly conversation cap once the account is enabled.</p>
       </div>
+
+      <details>
+        <summary className="cursor-pointer text-sm font-bold">
+          Websites ({tenant.site_count})
+        </summary>
+        <div className="mt-2">
+          <WebsiteList domains={tenant.domains} />
+        </div>
+      </details>
 
       <div>
         <h3 className="text-sm font-bold">Users</h3>
