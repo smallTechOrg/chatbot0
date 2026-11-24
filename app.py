@@ -9,6 +9,7 @@ from flask_smorest import Api
 
 from api import register_blueprints
 from api.domains import domains_bp
+from auth.legacy import register_legacy_lock
 from core import crypto
 from core.config import APP_ENV, CHATBOT0_SECRET_KEY, DEBUG, PORT, SCHEDULER_ENABLED, WERKZEUG_RUN_MAIN
 from core.logging import configure_logging
@@ -61,6 +62,9 @@ def create_app() -> Flask:
         SESSION_COOKIE_SECURE=APP_ENV != "local",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
     )
+
+    # The cutover lock for the old public endpoints (off unless LOCK_LEGACY_API=true).
+    register_legacy_lock(flask_app)
 
     # -- Smorest-managed blueprints (auto-documented) --------------------------
     smorest_api = Api(flask_app)
