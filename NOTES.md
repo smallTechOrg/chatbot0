@@ -82,3 +82,9 @@ DASHBOARD_URL, merge zer0-frontend-web PR #30, set LOCK_LEGACY_API=true on produ
 spec/roadmap.md. Staging has LOCK_LEGACY_API=true already.
 
 Watch: the Groq org hit its daily token limit (429 TPD) during smoke tests; set GROQ_BACKUP_MODEL_NAME or upgrade.
+
+## Follow-up run (2026-11-24): outage, deploy secret, tenant Slack, plans
+
+- **A stray `cat > file` hung a tool call.** Symptom: `gh pr create` never ran; the command was moved to the background after 120 s. Cause: I wrote `cat > $TMPDIR/pr.md 2>/dev/null || true` (an empty `$TMPDIR` made it read stdin) ahead of the real heredoc. Fix: stop the task, write PR bodies with the Write tool. Lesson: never leave a bare `cat >` in a chain; use the file tools for long text.
+- **Failed LLM calls saved nothing to the history.** `RunnableWithMessageHistory` stores the human and AI messages together after the model answers, so an outage lost the visitor's message too. The engine now saves the human message alone on an outage (no AI message). Lesson: read when a wrapper persists, before relying on it.
+- **`gh run watch` in the foreground is cut at about 180 s** and moved to the background; wait with the Monitor tool instead.
