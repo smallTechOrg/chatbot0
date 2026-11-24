@@ -210,3 +210,26 @@ def test_a_test_message_outside_the_24_hour_window_comes_with_a_hint(app, setup,
 def test_the_connection_pages_are_off_without_accounts(app, client, monkeypatch):
     monkeypatch.setattr(app, "secret_key", None)
     assert client.get("/api/whatsapp/connections").status_code == 401  # no session can exist without a key
+
+
+def test_the_display_name_status_is_stored_and_returned(app, setup, graph):
+    client, csrf = as_user(app, "a@wa-test.invalid")
+    cid = connect(client, csrf, setup["a"]["key"]).get_json()["connection"]["id"]
+    graph["check"] = GraphResult(
+        True,
+        {
+            "display_phone_number": "+1 555 0100",
+            "verified_name": "Acme",
+            "name_status": "PENDING_REVIEW",
+            "status": "CONNECTED",
+        },
+    )
+    check = client.post(f"/api/whatsapp/connections/{cid}/check", headers=csrf).get_json()["check"]
+    assert (check["name_status"], check["number_status"]) == ("PENDING_REVIEW", "CONNECTED")
+    conn = client.get(f"/api/whatsapp/connections/{cid}").get_json()["connection"]
+    assert (conn["name_status"], conn["number_status"]) == ("PENDING_REVIEW", "CONNECTED")
+    listed = client.get("/api/whatsapp/connections").get_json()["connections"]
+    assert listed[0]["name_status"] == "PENDING_REVIEW"
+    graph["check"] = GraphResult(True, {"display_phone_number": "+1 555 0100"})
+    client.post(f"/api/whatsapp/connections/{cid}/check", headers=csrf)
+    assert client.get(f"/api/whatsapp/connections/{cid}").get_json()["connection"]["name_status"] is None

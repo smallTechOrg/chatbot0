@@ -220,6 +220,14 @@ def ensure_whatsapp_tables_exist(sync_connection):
             ON whatsapp_messages(received_at);
             """
         )
+        # name_status: Meta's display-name review (APPROVED, PENDING_REVIEW, DECLINED...).
+        # number_status: the number's own status (CONNECTED, PENDING...). `status` is the connection's.
+        cur.execute(
+            """
+            ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS name_status TEXT;
+            ALTER TABLE whatsapp_connections ADD COLUMN IF NOT EXISTS number_status TEXT;
+            """
+        )
     logger.info("Tables 'whatsapp_connections' and 'whatsapp_messages' created/verified successfully.")
 
 
