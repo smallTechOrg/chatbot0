@@ -126,3 +126,67 @@ def domain_key_exists(conn, key: str) -> bool:
     with conn.cursor() as cur:
         cur.execute("SELECT 1 FROM domains WHERE key = %s LIMIT 1", (key,))
         return cur.fetchone() is not None
+
+
+# -- admin: tenants, their users and moving domains -------------------------------------------------------
+
+
+@with_connection
+def list_tenants_with_usage(conn) -> list[dict[str, Any]]:
+    """Every tenant with its users, domain keys and conversation count (distinct chat sessions on its domains)."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            SELECT t.id, t.name, t.enabled, t.enabled_at, t.trial_conversation_limit, t.created_at,
+                   COALESCE((SELECT json_agg(json_build_object('id', u.id, 'email', u.email, 'is_admin', u.is_admin,
+                                                                'invited', u.password_hash IS NULL,
+                                                                'last_login_at', u.last_login_at) ORDER BY u.id)
+                             FROM users u WHERE u.tenant_id = t.id), '[]'::json) AS users,
+                   COALESCE((SELECT json_agg(DISTINCT d.key) FROM domains d WHERE d.tenant_id = t.id), '[]'::json)
+                       AS domain_keys,
+                   (SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
+                    WHERE c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)) AS conversations
+            FROM tenants t ORDER BY t.id
+            """
+        )
+        return cur.fetchall()
+
+
+@with_connection
+def update_tenant(
+    conn, tenant_id: int, name: str | None, enabled: bool | None, trial_conversation_limit: int | None
+) -> dict[str, Any] | None:
+    """Change the given fields; enabling stamps enabled_at once. Returns the tenant, or None if unknown."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            UPDATE tenants SET
+                name = COALESCE(%s, name),
+                enabled = COALESCE(%s, enabled),
+                enabled_at = CASE WHEN %s IS TRUE AND NOT enabled THEN NOW() ELSE enabled_at END,
+                trial_conversation_limit = COALESCE(%s, trial_conversation_limit)
+            WHERE id = %s
+            RETURNING id, name, enabled, enabled_at, trial_conversation_limit
+            """,
+            (name, enabled, enabled, trial_conversation_limit, tenant_id),
+        )
+        return cur.fetchone()
+
+
+@with_connection
+def move_domain(conn, key: str, tenant_id: int) -> int:
+    """Give every domain row with this key (main and www) to another tenant. Returns how many rows moved."""
+    with conn.cursor() as cur:
+        cur.execute("UPDATE domains SET tenant_id = %s WHERE key = %s", (tenant_id, key))
+        return cur.rowcount
+
+
+@with_connection
+def domain_keys(conn, tenant_id: int | None = None) -> list[str]:
+    """Distinct domain keys, of one tenant or of all."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT DISTINCT key FROM domains WHERE (%(t)s::int IS NULL OR tenant_id = %(t)s::int) ORDER BY key",
+            {"t": tenant_id},
+        )
+        return [r[0] for r in cur.fetchall()]

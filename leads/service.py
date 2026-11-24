@@ -6,19 +6,15 @@ from typing import Any
 
 from chat.history import read_history
 from core.config import status_type
+from core.errors import ServiceError
 from leads import repository
 
 MAX_REMARKS = 5000
 STATUSES = frozenset(s.value for s in status_type)
 
 
-class LeadError(Exception):
-    """A request the API answers with `status` and a message that is safe to show."""
-
-    def __init__(self, message: str, status: int):
-        super().__init__(message)
-        self.message = message
-        self.status = status
+class LeadError(ServiceError):
+    """A leads request the API answers with `status` and a message that is safe to show."""
 
 
 def list_leads(user: dict[str, Any], tenant_id: int | None = None) -> list[dict[str, Any]]:
