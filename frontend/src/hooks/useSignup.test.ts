@@ -1,80 +1,73 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SIGNUP_ERRORS, useSignup, type SignupInput } from "./useSignup";
+import { useSignup, type SignupInput } from "./useSignup";
 
-vi.mock("@/lib/api", () => ({ registerDomain: vi.fn(), saveCompanyPrompt: vi.fn() }));
-import { registerDomain, saveCompanyPrompt } from "@/lib/api";
+vi.mock("@/lib/api", async () => {
+  class ApiError extends Error {
+    constructor(
+      public readonly status: number,
+      message: string,
+    ) {
+      super(message);
+    }
+  }
+  return { ApiError, signUp: vi.fn() };
+});
+import { ApiError, signUp } from "@/lib/api";
 
 const input: SignupInput = {
   name: " Jane ",
   website: " https://x.com ",
-  contactMethod: "email",
   email: " j@x.com ",
+  password: "long enough pw",
   phone: "",
-  description: "We sell things",
+  description: " We sell things ",
   colour: "#219EBC",
 };
 
-beforeEach(() => {
-  vi.resetAllMocks();
-  vi.spyOn(console, "warn").mockImplementation(() => {});
-});
+beforeEach(() => vi.resetAllMocks());
 
 describe("useSignup", () => {
-  it("registers the domain with the contact details, saves the prompt, then returns the embed script", async () => {
-    vi.mocked(registerDomain).mockResolvedValue({ kind: "created", key: "x.com" });
-    vi.mocked(saveCompanyPrompt).mockResolvedValue(true);
+  it("creates the account with trimmed fields and returns the embed script", async () => {
+    vi.mocked(signUp).mockResolvedValue({ user: { id: 1, email: "j@x.com", is_admin: false, tenant_id: 2 }, domain: { key: "X_COM", address: "x.com" } });
     const { result } = renderHook(() => useSignup());
 
     await act(() => result.current.submit(input));
 
-    expect(registerDomain).toHaveBeenCalledWith({ website_url: "https://x.com", contact_name: "Jane", email: "j@x.com" });
-    expect(saveCompanyPrompt).toHaveBeenCalledWith("x.com", "We sell things");
+    expect(signUp).toHaveBeenCalledWith({
+      name: "Jane",
+      website: "https://x.com",
+      email: "j@x.com",
+      password: "long enough pw",
+      phone: undefined,
+      description: "We sell things",
+    });
     expect(result.current.embedScript).toContain('data-colour="#219EBC"');
     expect(result.current.error).toBeNull();
   });
 
-  it("sends the phone as mobile when that is the chosen method, and skips an empty description", async () => {
-    vi.mocked(registerDomain).mockResolvedValue({ kind: "created", key: "x.com" });
+  it("passes the phone number when given", async () => {
+    vi.mocked(signUp).mockResolvedValue({ user: { id: 1, email: "j@x.com", is_admin: false, tenant_id: 2 }, domain: { key: "X_COM", address: "x.com" } });
     const { result } = renderHook(() => useSignup());
-
-    await act(() => result.current.submit({ ...input, contactMethod: "phone", phone: "+91 98", description: " " }));
-
-    expect(registerDomain).toHaveBeenCalledWith({ website_url: "https://x.com", contact_name: "Jane", mobile: "+91 98" });
-    expect(saveCompanyPrompt).not.toHaveBeenCalled();
+    await act(() => result.current.submit({ ...input, phone: " +91 98765 43210 " }));
+    expect(vi.mocked(signUp).mock.calls[0][0].phone).toBe("+91 98765 43210");
   });
 
-  it.each([
-    ["duplicate", SIGNUP_ERRORS.duplicate],
-    ["invalid", SIGNUP_ERRORS.invalid],
-    ["failed", SIGNUP_ERRORS.failed],
-  ] as const)("shows the %s error and no embed script", async (kind, message) => {
-    vi.mocked(registerDomain).mockResolvedValue({ kind });
+  it("shows the server's message and no embed script when sign-up is refused", async () => {
+    vi.mocked(signUp).mockRejectedValue(new ApiError(409, "This website is already signed up."));
     const { result } = renderHook(() => useSignup());
 
     await act(() => result.current.submit(input));
 
-    expect(result.current.error).toBe(message);
+    expect(result.current.error).toBe("This website is already signed up.");
     expect(result.current.embedScript).toBeNull();
-    expect(saveCompanyPrompt).not.toHaveBeenCalled();
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("continues when saving the prompt fails", async () => {
-    vi.mocked(registerDomain).mockResolvedValue({ kind: "created", key: "x.com" });
-    vi.mocked(saveCompanyPrompt).mockResolvedValue(false);
-    const { result } = renderHook(() => useSignup());
-
-    await act(() => result.current.submit(input));
-
-    expect(result.current.embedScript).not.toBeNull();
-  });
-
-  it("goes back to the form on reset", async () => {
-    vi.mocked(registerDomain).mockResolvedValue({ kind: "created", key: "x.com" });
+  it("shows a generic message when the server cannot be reached", async () => {
+    vi.mocked(signUp).mockRejectedValue(new TypeError("fetch failed"));
     const { result } = renderHook(() => useSignup());
     await act(() => result.current.submit(input));
-    act(() => result.current.reset());
-    expect(result.current.embedScript).toBeNull();
+    expect(result.current.error).toMatch(/Could not reach the server/);
   });
 });

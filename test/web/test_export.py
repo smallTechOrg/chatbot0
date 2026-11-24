@@ -101,9 +101,18 @@ def test_industries_lists_every_industry(client):
 
 def test_signup_page_has_the_form(client):
     html = page(client, "/signup/")
-    for field in ("su-name", "su-website", "su-email", "su-prompt", "su-colour", "su-colour-picker"):
+    for field in (
+        "su-name",
+        "su-website",
+        "su-email",
+        "su-password",
+        "su-phone",
+        "su-prompt",
+        "su-colour",
+        "su-colour-picker",
+    ):
         assert f'id="{field}"' in html
-    assert "Email" in html and "Phone" in html
+    assert 'type="password"' in html and "optional" in html
     assert 'id="signup-submit"' in html and "disabled" in html.split('id="signup-submit"')[1][:80]
     for colour in ("#219EBC", "#023047", "#FB8500", "#FFB703", "#E63946", "#2D6A4F", "#7209B7", "#000000"):
         assert f"Select colour {colour}" in html
@@ -236,3 +245,29 @@ def test_old_admin_pages_are_not_swallowed_by_the_prefix_redirect(client):
     """/chatbot0/<page> redirects to /<page>, but the admin pages under that prefix are real routes."""
     for path in ("/chatbot0/admin/login", "/chatbot0/admin/whatsapp"):
         assert client.get(path).status_code != 301
+
+
+# ---------------------------------------------------------------- the signed-in app (client-rendered pages)
+
+
+@pytest.mark.parametrize(
+    "path,title",
+    [
+        ("/login/", "Sign in, chatbot0"),
+        ("/accept/", "Choose your password, chatbot0"),
+        ("/dashboard/", "Leads, chatbot0"),
+    ],
+)
+def test_app_pages_are_served_and_not_indexed(client, path, title):
+    html = page(client, path)
+    assert f"<title>{title}</title>" in html
+    assert 'name="robots" content="noindex' in html
+
+
+def test_the_accept_page_never_leaks_its_token_through_the_referrer(client):
+    assert 'name="referrer" content="no-referrer"' in page(client, "/accept/")
+
+
+def test_analytics_skips_the_private_app_paths(client):
+    js = client.get("/st-analytics.js").get_data(as_text=True)
+    assert "login|accept" in js and "dashboard" in js

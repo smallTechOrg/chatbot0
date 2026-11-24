@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { trackSite } from "@/lib/analytics";
 
 interface Props {
   script: string;
   colour: string;
-  onRestart: () => void;
 }
 
 /** Copy to the clipboard; older browsers and non-HTTPS pages have no navigator.clipboard, so select and execCommand. */
@@ -36,7 +36,7 @@ async function copyText(text: string, fallbackTarget: HTMLElement | null): Promi
 }
 
 /** The "you're all set" step: the script to paste, a copy button and a preview of the widget button. */
-export default function EmbedResult({ script, colour, onRestart }: Props) {
+export default function EmbedResult({ script, colour }: Props) {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -84,10 +84,14 @@ export default function EmbedResult({ script, colour, onRestart }: Props) {
       <span className="pub-widget-preview" style={{ background: colour }}>
         <span aria-hidden="true">💬</span> Chat with us
       </span>
-      <div className="pub-actions pub-embed__after">
-        <button type="button" className="pub-btn pub-btn--secondary" onClick={onRestart}>
-          &larr; Start over
-        </button>
+      <p className="pub-body pub-embed__after">
+        Your account is created and you are signed in. Until we enable it, your agent answers up to 20 conversations, and
+        you can see every lead in your dashboard.
+      </p>
+      <div className="pub-actions">
+        <Link className="pub-btn pub-btn--primary" href="/dashboard/">
+          Go to your dashboard
+        </Link>
       </div>
     </div>
   );

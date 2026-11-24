@@ -2,3 +2,16 @@
 @import "../styles/site.css";
 
 :root { --font-montserrat: "Montserrat Variable"; }
+
+/* Tokens for the signed-in app (Tailwind utilities: bg-readme, text-ink, border-line ...). Same palette as site.css. */
+@theme inline {
+  --color-ink: #1c1b18;
+  --color-readme: #f5f1ee;
+  --color-surface: #fbfbf9;
+  --color-muted: #4f4d4a;
+  --color-line: #c4c3c0;
+  --color-gold: #d68a2e;
+  --color-gold-60: #b2823b;
+  --color-ok: #4f6b38;
+  --color-bad: #b03a2e;
+}
