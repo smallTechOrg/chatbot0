@@ -96,6 +96,15 @@ max_input_length = int(os.getenv("MAX_INPUT_LENGTH", "10000"))
 DEFAULT_DOMAIN = os.getenv("DEFAULT_DOMAIN", "COMMON")
 
 # ---------------------------------------------------------------------------
+# Legacy public endpoints (cutover to accounts)
+# ---------------------------------------------------------------------------
+# When true, the old unauthenticated endpoints (GET/PATCH /chat-info, PATCH /chat-info/contact, GET /prompts,
+# POST /prompt, GET/POST /domains/, GET /domains/<id>) need an admin session (401 without one, 403 for a
+# non-admin). /chat, /history, the webhooks and /jobs/* are never affected. Default false: turn it on once the
+# new dashboard is live and the zer0 dashboard has been retired.
+LOCK_LEGACY_API = os.getenv("LOCK_LEGACY_API", "false").lower() == "true"
+
+# ---------------------------------------------------------------------------
 # Secrets for stored credentials and the admin page
 # ---------------------------------------------------------------------------
 # Encrypts the WhatsApp tokens kept in the database and signs the admin login

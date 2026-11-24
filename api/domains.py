@@ -34,7 +34,8 @@ domains_bp = Blueprint(
     __name__,
     url_prefix="/domains",
     description=(
-        "Manage registered domains. A domain record authorises the chat agent to serve visitors from that hostname."
+        "Manage registered domains. A domain record authorises the chat agent to serve visitors from that hostname. "
+        "Admin-only when the server runs with LOCK_LEGACY_API=true; accounts use /api/domains instead."
     ),
 )
 
