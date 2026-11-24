@@ -308,6 +308,17 @@ export interface AdminUser {
   last_login_at: string | null;
 }
 
+export interface AdminDomain {
+  id: number;
+  key: string;
+  address: string;
+  parent_id: number | null;
+  parent_key: string | null;
+  parent_address: string | null;
+  /** A "www." row that shares its main website's key. */
+  is_www_alias: boolean;
+}
+
 export interface AdminTenant {
   id: number;
   name: string;
@@ -319,6 +330,11 @@ export interface AdminTenant {
   conversations: number;
   users: AdminUser[];
   domain_keys: string[];
+  domains: AdminDomain[];
+  /** All domain rows, www aliases included. */
+  domain_count: number;
+  /** Websites, without the www aliases. */
+  site_count: number;
 }
 
 export const admin = {

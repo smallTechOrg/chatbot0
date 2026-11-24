@@ -205,6 +205,12 @@ def list_tenants_with_usage(conn, since: datetime) -> list[dict[str, Any]]:
                              FROM users u WHERE u.tenant_id = t.id), '[]'::json) AS users,
                    COALESCE((SELECT json_agg(DISTINCT d.key) FROM domains d WHERE d.tenant_id = t.id), '[]'::json)
                        AS domain_keys,
+                   COALESCE((SELECT json_agg(json_build_object(
+                                 'id', d.id, 'key', d.key, 'address', d.address, 'parent_id', d.parent,
+                                 'parent_key', p.key, 'parent_address', p.address,
+                                 'is_www_alias', d.address LIKE 'www.%%') ORDER BY d.id)
+                             FROM domains d LEFT JOIN domains p ON p.id = d.parent
+                             WHERE d.tenant_id = t.id), '[]'::json) AS domains,
                    (SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
                     WHERE c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)) AS conversations,
                    (SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
