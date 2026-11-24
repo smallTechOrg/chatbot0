@@ -7,3 +7,15 @@ export function isSlackWebhookUrl(value: string): boolean {
   const url = value.trim();
   return url.startsWith(SLACK_WEBHOOK_PREFIX) && url.length > SLACK_WEBHOOK_PREFIX.length && !/\s/.test(url);
 }
+
+/** Whether `value` is an https address with a host and nothing Slack would read as link markup. */
+export function isHttpsUrl(value: string): boolean {
+  const text = value.trim();
+  if (/[\s<>|]/.test(text)) return false;
+  try {
+    const url = new URL(text);
+    return url.protocol === "https:" && url.hostname !== "";
+  } catch {
+    return false;
+  }
+}

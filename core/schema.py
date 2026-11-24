@@ -273,6 +273,9 @@ def ensure_tenancy_tables_exist(sync_connection):
             ALTER TABLE domains ADD COLUMN IF NOT EXISTS tenant_id INT REFERENCES tenants(id);
             -- The tenant's own Slack incoming webhook, encrypted (core/crypto.py); NULL: not set.
             ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slack_webhook_enc TEXT;
+            -- Slack on/off (the webhook is kept while off) and the link the tenant's summary header points at.
+            ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slack_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+            ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slack_dashboard_url TEXT;
             -- When each rate-limited alert (see core/throttle.py) was last sent.
             CREATE TABLE IF NOT EXISTS alert_throttle (
                 key TEXT PRIMARY KEY,

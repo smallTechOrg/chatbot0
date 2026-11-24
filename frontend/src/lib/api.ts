@@ -288,14 +288,28 @@ export const whatsapp = {
 };
 
 export interface SlackStatus {
-  configured: boolean;
+  /** Whether the account is enabled (only enabled accounts can change Slack settings). */
   enabled: boolean;
+  /** A webhook is stored. The URL itself is never returned. */
+  configured: boolean;
+  notifications_on: boolean;
+  /** The link the Slack summary header points at (the default when the account has not set its own). */
+  dashboard_url: string;
+  dashboard_url_is_default: boolean;
+  default_dashboard_url: string;
 }
 
-/** The account's own Slack webhook. The server never returns the URL, only whether one is set. */
+export interface SlackChanges {
+  webhook_url?: string;
+  notifications_on?: boolean;
+  /** "" goes back to the default link. */
+  dashboard_url?: string;
+}
+
+/** The account's own Slack settings. */
 export const slack = {
   status: () => request<SlackStatus>("/api/slack"),
-  save: (webhookUrl: string) => request<unknown>("/api/slack", { method: "PUT", body: { webhook_url: webhookUrl } }),
+  save: (changes: SlackChanges) => request<SlackStatus>("/api/slack", { method: "PUT", body: changes }),
   clear: () => request<unknown>("/api/slack", { method: "DELETE" }),
   test: () => request<unknown>("/api/slack/test", { method: "POST", body: {} }),
 };
