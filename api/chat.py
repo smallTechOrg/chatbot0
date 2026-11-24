@@ -36,9 +36,10 @@ def chat_api():
         request_type = chat_validation_response.data["request_type"]
         domain = chat_validation_response.data["domain"]
 
-        if not tenancy.conversation_allowed(domain, session_id):
-            # A tenant that is not enabled has used up its trial: a normal reply, and no LLM call.
-            return APIResponse(None, {"response": tenancy.TRIAL_LIMIT_REPLY}).response(HTTPStatus.OK)
+        blocked = tenancy.block_reply(domain, session_id)
+        if blocked is not None:
+            # The trial or the plan's monthly cap is used up: a normal reply, and no LLM call.
+            return APIResponse(None, {"response": blocked}).response(HTTPStatus.OK)
 
         try:
             bot_response = get_groq_response(input.strip(), session_id, request_type, domain)

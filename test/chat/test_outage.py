@@ -128,7 +128,7 @@ def test_a_failing_slack_post_does_not_break_the_reply(client, failing_model, al
 def test_whatsapp_replies_with_the_busy_text(monkeypatch):
     sent = []
     monkeypatch.setattr(wa_service, "send_text", lambda pnid, token, to, body: sent.append(body) or _ok())
-    monkeypatch.setattr(wa_service.tenancy, "conversation_allowed", lambda *a: True)
+    monkeypatch.setattr(wa_service.tenancy, "block_reply", lambda *a: None)
     monkeypatch.setattr(wa_service.repository, "ensure_chat_info", lambda *a: None)
 
     def unavailable(*a):

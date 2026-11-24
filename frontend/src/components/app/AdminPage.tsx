@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { admin, ApiError, whatsapp, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
+import { PLANS } from "@/content/plans";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
+
+// The plan keys are the pricing plans' keys: the server validates them against the same list.
+const PLAN_OPTIONS = PLANS.map((p) => ({ key: p.key, name: p.name }));
 
 /** A link the admin copies and sends by hand (no email service yet). */
 function LinkBox({ link, onClose }: { link: string; onClose: () => void }) {
@@ -44,7 +48,10 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
         <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${tenant.enabled ? "border-ok text-ok" : "border-gold text-gold-60"}`}>
           {tenant.enabled ? "Enabled" : "Trial"}
         </span>
-        <span className="text-sm text-muted">{tenant.conversations} conversations</span>
+        <span className="text-sm text-muted">
+          {tenant.conversations} conversations, {tenant.month_conversations} this month
+          {tenant.monthly_limit === null ? " (no limit)" : ` of ${tenant.monthly_limit}`}
+        </span>
         <button type="button" className={`${tenant.enabled ? btnSecondary : btnPrimary} ml-auto`} onClick={() => void run(() => admin.updateTenant(tenant.id, { enabled: !tenant.enabled }))}>
           {tenant.enabled ? "Disable" : "Enable account"}
         </button>
@@ -63,6 +70,25 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
         </div>
         <button type="submit" className={btnSecondary}>Save limit</button>
       </form>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className={label} htmlFor={`plan-${tenant.id}`}>Plan</label>
+          <select
+            id={`plan-${tenant.id}`}
+            className={`${input} w-40`}
+            value={tenant.plan}
+            onChange={(e) => void run(() => admin.updateTenant(tenant.id, { plan: e.target.value }))}
+          >
+            {PLAN_OPTIONS.map((p) => (
+              <option key={p.key} value={p.key}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="text-xs text-muted">Sets the monthly conversation cap once the account is enabled.</p>
+      </div>
 
       <div>
         <h3 className="text-sm font-bold">Users</h3>

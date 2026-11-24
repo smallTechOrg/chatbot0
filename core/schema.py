@@ -280,10 +280,25 @@ def ensure_tenancy_tables_exist(sync_connection):
             );
             """
         )
+        # The plan sets the monthly conversation cap (tenancy/plans.py). When the column is first added, the
+        # smallTech tenant (our own sites) goes on the unlimited plan; every other tenant starts on "free".
+        # Later changes by an admin are never overwritten, because this runs only when the column is missing.
         cur.execute(
             """
-            INSERT INTO tenants (name, enabled, enabled_at)
-            SELECT %s, TRUE, NOW()
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                               WHERE table_name = 'tenants' AND column_name = 'plan') THEN
+                    ALTER TABLE tenants ADD COLUMN plan TEXT NOT NULL DEFAULT 'free';
+                    UPDATE tenants SET plan = 'pro' WHERE name = 'smallTech';
+                END IF;
+            END $$;
+            """
+        )
+        cur.execute(
+            """
+            INSERT INTO tenants (name, enabled, enabled_at, plan)
+            SELECT %s, TRUE, NOW(), 'pro'
             WHERE NOT EXISTS (SELECT 1 FROM tenants WHERE name = %s)
             """,
             (SMALLTECH_TENANT, SMALLTECH_TENANT),
