@@ -66,3 +66,19 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   chatbot0's copy of the script, the page sends `referrer: no-referrer`, and the form strips the token from the
   URL once read. Lesson: a one-time secret in a query string needs the analytics and referrer paths checked.
 - **A failed git add hid in a chain.** `git add -A -- admin ...` failed on a deleted path, the chain went on and committed only the staged deletions; the branch was pushed with the app importing a deleted package for a few minutes (never merged or deployed). Fix: a follow-up commit; lesson: no `;` after `git add`, check `git status` before commit.
+
+## State at 2026-11-24 08:20 IST (end of the unattended run)
+
+Done and live on production: Q, R2 (slices 1-5 of the plan; zer0 PR #30 open and held), Phase 3 slices 1-7
+(schema + auth, tenant-scoped leads and the trial cap, sign-up/sites/prompts APIs, admin and WhatsApp APIs,
+the React login/dashboard/sites/WhatsApp/admin pages and removal of the Jinja admin, the LOCK_LEGACY_API switch,
+docs). Not done: slice 8 (delete spec/roadmap.md) because the Phase 3 gate is not complete: the staging admin
+bootstrap (new Secret Manager secret CHATBOT0_STAGING_ADMIN_LOGIN) needs the staging setup password, which was
+not read. Everything else of the gate ran locally (bootstrap, login, me, sign-up of tenant B, B's leads empty,
+B's PATCH on an A lead is 403) and in the test suite.
+
+Next, in order (owner): create the production admin (/login/ first-time setup), enable accounts on /admin/, set
+DASHBOARD_URL, merge zer0-frontend-web PR #30, set LOCK_LEGACY_API=true on production and redeploy. Then delete
+spec/roadmap.md. Staging has LOCK_LEGACY_API=true already.
+
+Watch: the Groq org hit its daily token limit (429 TPD) during smoke tests; set GROQ_BACKUP_MODEL_NAME or upgrade.
