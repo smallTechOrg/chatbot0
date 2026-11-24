@@ -55,3 +55,25 @@ export function trialMessage(tenant: { enabled: boolean; trial_conversation_limi
   if (tenant.enabled) return null;
   return `${tenant.trial_conversations_used} of ${tenant.trial_conversation_limit} trial conversations used. We'll enable your account shortly.`;
 }
+
+export interface PlanUsage {
+  enabled: boolean;
+  plan_name: string;
+  monthly_limit: number | null;
+  monthly_conversations_used: number;
+}
+
+/** "Free plan: 42 of 200 conversations used this month" (or "Pro plan: 42 conversations this month, no limit"); null while on trial. */
+export function planUsageMessage(tenant: PlanUsage): string | null {
+  if (!tenant.enabled) return null;
+  const used = tenant.monthly_conversations_used;
+  if (tenant.monthly_limit === null) return `${tenant.plan_name} plan: ${used} conversations this month, no limit.`;
+  const text = `${tenant.plan_name} plan: ${used} of ${tenant.monthly_limit} conversations used this month.`;
+  return used >= tenant.monthly_limit ? `${text} Visitors with new chats see a "limit reached" message until next month.` : text;
+}
+
+/** How full the monthly allowance is, 0 to 100, or null when there is no limit. */
+export function planUsagePercent(tenant: Pick<PlanUsage, "monthly_limit" | "monthly_conversations_used">): number | null {
+  if (tenant.monthly_limit === null || tenant.monthly_limit <= 0) return null;
+  return Math.min(100, Math.round((tenant.monthly_conversations_used * 100) / tenant.monthly_limit));
+}

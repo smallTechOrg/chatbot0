@@ -142,11 +142,12 @@ def handle_text(conn: dict, wa_id: str, name: str | None, text: str) -> None:
     session_id = session_id_for(conn["phone_number_id"], wa_id)
     domain = conn["domain_key"]
     try:
-        if tenancy.conversation_allowed(domain, session_id):
+        blocked = tenancy.block_reply(domain, session_id)
+        if blocked is None:
             repository.ensure_chat_info(session_id, domain, REQUEST_TYPE, f"+{wa_id}", name)
             reply = get_groq_response(text, session_id, REQUEST_TYPE, domain)
         else:
-            reply = tenancy.TRIAL_LIMIT_REPLY  # defence in depth: WhatsApp is also locked for disabled tenants
+            reply = blocked  # trial or plan cap used up (WhatsApp is also locked for tenants not enabled)
         bodies = split_message(to_whatsapp(reply)) or [FALLBACK_REPLY]
     except LLMUnavailable:
         bodies = [BUSY_REPLY]  # already logged and alerted by the engine

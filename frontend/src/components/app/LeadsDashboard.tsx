@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, leads as leadsApi, type Lead } from "@/lib/api";
-import { PAGE_SIZE, domainsOf, filterLeads, paginate, statusCounts, type StatusFilter } from "@/lib/leads";
+import { PAGE_SIZE, domainsOf, filterLeads, paginate, planUsageMessage, planUsagePercent, statusCounts, type StatusFilter } from "@/lib/leads";
 import { alertError, btnSecondary, card, input } from "./classes";
 import LeadRow from "./LeadRow";
+import { useMe } from "./SessionContext";
 
 const FILTERS: StatusFilter[] = ["ALL", "OPEN", "QUALIFYING", "CLOSED"];
 
 /** The leads of the signed-in account: search, status and website filters, pages, and each lead's chat. */
 export default function LeadsDashboard() {
+  const { me } = useMe();
+  const usage = planUsageMessage({ ...me.tenant });
+  const percent = planUsagePercent(me.tenant);
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -52,6 +56,17 @@ export default function LeadsDashboard() {
           {counts.ALL} in total: {counts.OPEN} open, {counts.QUALIFYING} qualifying, {counts.CLOSED} closed.
         </p>
       </div>
+
+      {usage && (
+        <section className={`${card} space-y-2`} aria-label="Plan usage">
+          <p className="text-sm font-semibold" data-testid="plan-usage">
+            {usage}
+          </p>
+          {percent !== null && (
+            <progress className="h-2 w-full accent-gold" max={100} value={percent} aria-label="Share of this month's conversations used" />
+          )}
+        </section>
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-56 flex-1">

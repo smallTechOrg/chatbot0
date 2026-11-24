@@ -9,6 +9,7 @@ from flask import Blueprint, current_app, jsonify, request
 from api.guard import guarded
 from auth import service
 from auth.session import csrf_token, current_user, end_session, login_required, start_session
+from tenancy import plans
 from tenancy import repository as tenants
 
 logger = logging.getLogger(__name__)
@@ -98,6 +99,10 @@ def me():
                 "enabled": tenant["enabled"],
                 "trial_conversation_limit": tenant["trial_conversation_limit"],
                 "trial_conversations_used": tenants.count_conversations(tenant["id"]),
+                "plan": tenant["plan"],
+                "plan_name": plans.PLAN_NAMES.get(tenant["plan"], tenant["plan"]),
+                "monthly_limit": plans.monthly_limit(tenant["plan"]),
+                "monthly_conversations_used": tenants.count_month_conversations(tenant["id"], plans.month_start()),
             },
             "domains": tenants.list_domains(tenant["id"]),
             "csrf": csrf_token(),
