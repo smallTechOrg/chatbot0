@@ -65,3 +65,4 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   st-analytics.js only skipped dashboard/embed/chat/admin/app. Fix: login and accept are private paths in
   chatbot0's copy of the script, the page sends `referrer: no-referrer`, and the form strips the token from the
   URL once read. Lesson: a one-time secret in a query string needs the analytics and referrer paths checked.
+- **A failed git add hid in a chain.** `git add -A -- admin ...` failed on a deleted path, the chain went on and committed only the staged deletions; the branch was pushed with the app importing a deleted package for a few minutes (never merged or deployed). Fix: a follow-up commit; lesson: no `;` after `git add`, check `git status` before commit.

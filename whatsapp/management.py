@@ -76,7 +76,9 @@ def create(user: dict[str, Any], data: dict[str, Any]) -> tuple[dict[str, Any], 
     fields["phone_number_id"] = clean_id(raw_id)
     if not PHONE_NUMBER_ID.match(fields["phone_number_id"]):
         raise WhatsAppError(
-            "Phone number ID must be the long numeric ID from WhatsApp > API Setup (not the phone number).", 400
+            "Phone number ID must be the long numeric ID from WhatsApp > API Setup (not the phone number). "
+            f"Received {len(raw_id)} characters: {raw_id.encode('unicode_escape').decode()[:80]}",
+            400,
         )
     if not all(fields.values()):
         raise WhatsAppError("Phone number ID, domain, access token and app secret are all required.", 400)
