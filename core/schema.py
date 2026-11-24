@@ -271,6 +271,11 @@ def ensure_tenancy_tables_exist(sync_connection):
             );
             CREATE INDEX IF NOT EXISTS idx_login_attempts_email_time ON login_attempts (email, attempted_at);
             ALTER TABLE domains ADD COLUMN IF NOT EXISTS tenant_id INT REFERENCES tenants(id);
+            -- When each rate-limited alert (see core/throttle.py) was last sent.
+            CREATE TABLE IF NOT EXISTS alert_throttle (
+                key TEXT PRIMARY KEY,
+                last_sent_at TIMESTAMPTZ NOT NULL
+            );
             """
         )
         cur.execute(
