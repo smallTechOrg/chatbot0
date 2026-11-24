@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Lead } from "@/lib/api";
-import { domainsOf, filterLeads, paginate, statusCounts, trialMessage } from "./leads";
+import { domainsOf, filterLeads, paginate, planUsageMessage, planUsagePercent, statusCounts, trialMessage } from "./leads";
 
 const lead = (over: Partial<Lead>): Lead => ({
   session_id: "s",
@@ -66,5 +66,26 @@ describe("trialMessage", () => {
     const t = { enabled: false, trial_conversation_limit: 20, trial_conversations_used: 12 };
     expect(trialMessage(t)).toBe("12 of 20 trial conversations used. We'll enable your account shortly.");
     expect(trialMessage({ ...t, enabled: true })).toBeNull();
+  });
+});
+
+describe("planUsageMessage", () => {
+  const t = { enabled: true, plan_name: "Free", monthly_limit: 200, monthly_conversations_used: 42 };
+
+  it("shows usage against the cap", () => {
+    expect(planUsageMessage(t)).toBe("Free plan: 42 of 200 conversations used this month.");
+    expect(planUsagePercent(t)).toBe(21);
+  });
+
+  it("says so when the cap is reached", () => {
+    expect(planUsageMessage({ ...t, monthly_conversations_used: 200 })).toContain("limit reached");
+    expect(planUsagePercent({ ...t, monthly_conversations_used: 250 })).toBe(100);
+  });
+
+  it("shows no limit on the unlimited plan, and nothing during the trial", () => {
+    const pro = { ...t, plan_name: "Pro", monthly_limit: null };
+    expect(planUsageMessage(pro)).toBe("Pro plan: 42 conversations this month, no limit.");
+    expect(planUsagePercent(pro)).toBeNull();
+    expect(planUsageMessage({ ...t, enabled: false })).toBeNull();
   });
 });

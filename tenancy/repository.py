@@ -1,5 +1,6 @@
 """SQL for tenants and the domains they own."""
 
+from datetime import datetime
 from typing import Any
 
 from psycopg.errors import UniqueViolation
@@ -14,7 +15,7 @@ Tenant = dict[str, Any]
 def find_tenant(conn, tenant_id: int) -> Tenant | None:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
-            "SELECT id, name, enabled, enabled_at, trial_conversation_limit FROM tenants WHERE id = %s",
+            "SELECT id, name, enabled, enabled_at, trial_conversation_limit, plan FROM tenants WHERE id = %s",
             (tenant_id,),
         )
         return cur.fetchone()
@@ -24,7 +25,7 @@ def find_tenant(conn, tenant_id: int) -> Tenant | None:
 def find_tenant_by_name(conn, name: str) -> Tenant | None:
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
-            "SELECT id, name, enabled, enabled_at, trial_conversation_limit FROM tenants WHERE name = %s "
+            "SELECT id, name, enabled, enabled_at, trial_conversation_limit, plan FROM tenants WHERE name = %s "
             "ORDER BY id LIMIT 1",
             (name,),
         )
@@ -89,23 +90,47 @@ def count_conversations(conn, tenant_id: int) -> int:
 
 
 @with_connection
-def trial_status(conn, domain_key: str, session_id: str) -> dict[str, Any] | None:
-    """What the trial cap needs for one chat message, in one query; None when no tenant owns the domain key."""
+def count_month_conversations(conn, tenant_id: int, since: datetime) -> int:
+    """Distinct chat sessions on the tenant's domains that started at or after *since* (what the plan cap counts)."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(DISTINCT session_id) FROM chat_info "
+            "WHERE created_at >= %s AND domain IN (SELECT key FROM domains WHERE tenant_id = %s)",
+            (since, tenant_id),
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+
+
+@with_connection
+def trial_status(
+    conn, domain_key: str, session_id: str, since: datetime, capped_plans: list[str]
+) -> dict[str, Any] | None:
+    """
+    What the trial cap and the plan cap need for one chat message, in one query; None when no tenant owns the
+    domain key. `used` counts all sessions (trial, tenants not enabled); `month_used` counts the sessions that
+    started since *since* (enabled tenants whose plan is in *capped_plans*; 0 for the others).
+    """
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
-            SELECT t.enabled,
+            SELECT t.enabled, t.plan,
                    t.trial_conversation_limit AS "limit",
-                   EXISTS (SELECT 1 FROM chat_info WHERE session_id = %s) AS has_session,
+                   EXISTS (SELECT 1 FROM chat_info WHERE session_id = %(session)s) AS has_session,
                    CASE WHEN t.enabled THEN 0 ELSE (
                        SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
                        WHERE c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)
-                   ) END AS used
+                   ) END AS used,
+                   CASE WHEN t.enabled AND t.plan = ANY(%(capped)s) THEN (
+                       SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
+                       WHERE c.created_at >= %(since)s
+                         AND c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)
+                   ) ELSE 0 END AS month_used
             FROM domains d JOIN tenants t ON t.id = d.tenant_id
-            WHERE d.key = %s
+            WHERE d.key = %(key)s
             ORDER BY d.id LIMIT 1
             """,
-            (session_id, domain_key),
+            {"session": session_id, "key": domain_key, "since": since, "capped": capped_plans},
         )
         return cur.fetchone()
 
@@ -168,12 +193,12 @@ def domain_key_exists(conn, key: str) -> bool:
 
 
 @with_connection
-def list_tenants_with_usage(conn) -> list[dict[str, Any]]:
+def list_tenants_with_usage(conn, since: datetime) -> list[dict[str, Any]]:
     """Every tenant with its users, domain keys and conversation count (distinct chat sessions on its domains)."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
-            SELECT t.id, t.name, t.enabled, t.enabled_at, t.trial_conversation_limit, t.created_at,
+            SELECT t.id, t.name, t.enabled, t.enabled_at, t.trial_conversation_limit, t.plan, t.created_at,
                    COALESCE((SELECT json_agg(json_build_object('id', u.id, 'email', u.email, 'is_admin', u.is_admin,
                                                                 'invited', u.password_hash IS NULL,
                                                                 'last_login_at', u.last_login_at) ORDER BY u.id)
@@ -181,16 +206,25 @@ def list_tenants_with_usage(conn) -> list[dict[str, Any]]:
                    COALESCE((SELECT json_agg(DISTINCT d.key) FROM domains d WHERE d.tenant_id = t.id), '[]'::json)
                        AS domain_keys,
                    (SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
-                    WHERE c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)) AS conversations
+                    WHERE c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)) AS conversations,
+                   (SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
+                    WHERE c.created_at >= %s
+                      AND c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)) AS month_conversations
             FROM tenants t ORDER BY t.id
-            """
+            """,
+            (since,),
         )
         return cur.fetchall()
 
 
 @with_connection
 def update_tenant(
-    conn, tenant_id: int, name: str | None, enabled: bool | None, trial_conversation_limit: int | None
+    conn,
+    tenant_id: int,
+    name: str | None,
+    enabled: bool | None,
+    trial_conversation_limit: int | None,
+    plan: str | None = None,
 ) -> dict[str, Any] | None:
     """Change the given fields; enabling stamps enabled_at once. Returns the tenant, or None if unknown."""
     with conn.cursor(row_factory=dict_row) as cur:
@@ -200,11 +234,12 @@ def update_tenant(
                 name = COALESCE(%s, name),
                 enabled = COALESCE(%s, enabled),
                 enabled_at = CASE WHEN %s IS TRUE AND NOT enabled THEN NOW() ELSE enabled_at END,
-                trial_conversation_limit = COALESCE(%s, trial_conversation_limit)
+                trial_conversation_limit = COALESCE(%s, trial_conversation_limit),
+                plan = COALESCE(%s, plan)
             WHERE id = %s
-            RETURNING id, name, enabled, enabled_at, trial_conversation_limit
+            RETURNING id, name, enabled, enabled_at, trial_conversation_limit, plan
             """,
-            (name, enabled, enabled, trial_conversation_limit, tenant_id),
+            (name, enabled, enabled, trial_conversation_limit, plan, tenant_id),
         )
         return cur.fetchone()
 

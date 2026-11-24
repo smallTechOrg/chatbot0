@@ -47,13 +47,14 @@ class TenantWorld:
         self.sessions: list[str] = []
         self.domain_keys: list[str] = []
 
-    def tenant(self, name: str, enabled: bool = True, limit: int = 20) -> dict:
+    def tenant(self, name: str, enabled: bool = True, limit: int = 20, plan: str = "free") -> dict:
         from core import db_pool
 
         with db_pool.get_connection() as conn, conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO tenants (name, enabled, trial_conversation_limit) VALUES (%s, %s, %s) RETURNING id",
-                (f"{name}-{uuid.uuid4().hex[:6]}", enabled, limit),
+                "INSERT INTO tenants (name, enabled, trial_conversation_limit, plan) VALUES (%s, %s, %s, %s) "
+                "RETURNING id",
+                (f"{name}-{uuid.uuid4().hex[:6]}", enabled, limit, plan),
             )
             tenant_id = cur.fetchone()[0]
         self.tenants.append(tenant_id)
@@ -79,7 +80,7 @@ class TenantWorld:
         assert user is not None
         return user
 
-    def lead(self, domain_key: str, name: str = "Lead") -> str:
+    def lead(self, domain_key: str, name: str = "Lead", created_at=None) -> str:
         """A chat_info row with one visitor message, so it shows in the lead list. Returns the session id."""
         from chat.history import get_session_history
         from core import db_pool
@@ -87,8 +88,9 @@ class TenantWorld:
         session_id = str(uuid.uuid4())
         with db_pool.get_connection() as conn, conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO chat_info (session_id, contact_name, domain, request_type) VALUES (%s, %s, %s, 'sales')",
-                (session_id, name, domain_key),
+                "INSERT INTO chat_info (session_id, contact_name, domain, request_type, created_at) "
+                "VALUES (%s, %s, %s, 'sales', COALESCE(%s, NOW()))",
+                (session_id, name, domain_key, created_at),
             )
         get_session_history(session_id).add_user_message(f"hello from {name}")
         self.sessions.append(session_id)

@@ -120,6 +120,13 @@ export interface Tenant {
   enabled: boolean;
   trial_conversation_limit: number;
   trial_conversations_used: number;
+  /** Plan key: "free", "basic" or "pro". */
+  plan: string;
+  plan_name: string;
+  /** Conversations per month the plan allows; null when unlimited. */
+  monthly_limit: number | null;
+  /** Distinct chat sessions started this calendar month (Asia/Kolkata). */
+  monthly_conversations_used: number;
 }
 
 export interface Site {
@@ -306,6 +313,9 @@ export interface AdminTenant {
   name: string;
   enabled: boolean;
   trial_conversation_limit: number;
+  plan: string;
+  monthly_limit: number | null;
+  month_conversations: number;
   conversations: number;
   users: AdminUser[];
   domain_keys: string[];
@@ -313,7 +323,7 @@ export interface AdminTenant {
 
 export const admin = {
   tenants: async () => (await request<{ tenants: AdminTenant[] }>("/api/admin/tenants")).tenants,
-  updateTenant: (id: number, changes: { enabled?: boolean; trial_conversation_limit?: number; name?: string }) =>
+  updateTenant: (id: number, changes: { enabled?: boolean; trial_conversation_limit?: number; name?: string; plan?: string }) =>
     request<unknown>(`/api/admin/tenants/${id}`, { method: "PATCH", body: changes }),
   invite: async (tenantId: number, email: string) =>
     (await request<{ invite_link: string }>(`/api/admin/tenants/${tenantId}/users`, { method: "POST", body: { email } })).invite_link,
