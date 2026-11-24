@@ -13,6 +13,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from auth import repository
 from core import config
+from core.errors import ServiceError
 from core.schema import SMALLTECH_TENANT
 from tenancy import repository as tenants
 
@@ -25,13 +26,8 @@ _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _dummy_hash: str | None = None
 
 
-class AuthError(Exception):
-    """A request the API answers with `status` and a message that is safe to show."""
-
-    def __init__(self, message: str, status: int):
-        super().__init__(message)
-        self.message = message
-        self.status = status
+class AuthError(ServiceError):
+    """An auth request the API answers with `status` and a message that is safe to show."""
 
 
 def normalize_email(email: Any) -> str:
