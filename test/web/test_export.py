@@ -256,6 +256,7 @@ def test_old_admin_urls_lead_to_the_login_page(client):
         ("/login/", "Sign in, chatbot0"),
         ("/accept/", "Choose your password, chatbot0"),
         ("/dashboard/", "Leads, chatbot0"),
+        ("/dashboard/settings/", "Settings, chatbot0"),
     ],
 )
 def test_app_pages_are_served_and_not_indexed(client, path, title):

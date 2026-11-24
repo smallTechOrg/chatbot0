@@ -75,7 +75,7 @@ export function setCsrfToken(token: string): void {
 }
 
 interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH" | "PUT";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
   /** Public calls (sign-in, probes) must not bounce a 401 to the login page. */
   public?: boolean;
@@ -278,6 +278,19 @@ export const whatsapp = {
       `/api/whatsapp/connections/${id}/test`,
       { method: "POST", body: { to, body } },
     ),
+};
+
+export interface SlackStatus {
+  configured: boolean;
+  enabled: boolean;
+}
+
+/** The account's own Slack webhook. The server never returns the URL, only whether one is set. */
+export const slack = {
+  status: () => request<SlackStatus>("/api/slack"),
+  save: (webhookUrl: string) => request<unknown>("/api/slack", { method: "PUT", body: { webhook_url: webhookUrl } }),
+  clear: () => request<unknown>("/api/slack", { method: "DELETE" }),
+  test: () => request<unknown>("/api/slack/test", { method: "POST", body: {} }),
 };
 
 export interface AdminUser {
