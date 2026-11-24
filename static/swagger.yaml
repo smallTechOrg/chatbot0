@@ -1,7 +1,11 @@
 openapi: 3.0.0
 info:
   title: Chat API
-  description: API specification for the Chat backend
+  description: >-
+    API specification for the Chat backend. When the server runs with LOCK_LEGACY_API=true, the endpoints
+    /chat-info, /chat-info/contact, /prompts, /prompt, /domains/ and /domains/{domain_id} need an admin
+    session (401 without one, 403 for other users); use the session APIs under /api/ (see /api/docs) instead.
+    /chat and /history stay public.
   version: 1.0.0
 servers:
   - url: https://api-staging.smalltech.in

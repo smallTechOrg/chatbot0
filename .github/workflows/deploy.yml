@@ -159,6 +159,7 @@ jobs:
           DB_NAME: "${DB_NAME}"
           DASHBOARD_URL: "${DASHBOARD_URL}"
           SCHEDULER_ENABLED: "false"
+          LOCK_LEGACY_API: "${{ vars.LOCK_LEGACY_API || 'false' }}"
           JOBS_OIDC_AUDIENCE: "${JOBS_AUDIENCE}"
           JOBS_ALLOWED_INVOKERS: "${SCHEDULER_SA}"
           GROQ_MODEL_NAME: "${{ vars.GROQ_MODEL_NAME || 'openai/gpt-oss-120b' }}"
