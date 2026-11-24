@@ -17,6 +17,7 @@ from collections.abc import Iterator
 from chat.engine import get_groq_response
 from core.config import agent_type
 from summary.slack import notify_whatsapp_problem
+from tenancy import service as tenancy
 from whatsapp import repository
 from whatsapp.client import GraphResult, send_text
 from whatsapp.formatting import split_message, to_whatsapp
@@ -140,8 +141,11 @@ def handle_text(conn: dict, wa_id: str, name: str | None, text: str) -> None:
     session_id = session_id_for(conn["phone_number_id"], wa_id)
     domain = conn["domain_key"]
     try:
-        repository.ensure_chat_info(session_id, domain, REQUEST_TYPE, f"+{wa_id}", name)
-        reply = get_groq_response(text, session_id, REQUEST_TYPE, domain)
+        if tenancy.conversation_allowed(domain, session_id):
+            repository.ensure_chat_info(session_id, domain, REQUEST_TYPE, f"+{wa_id}", name)
+            reply = get_groq_response(text, session_id, REQUEST_TYPE, domain)
+        else:
+            reply = tenancy.TRIAL_LIMIT_REPLY  # defence in depth: WhatsApp is also locked for disabled tenants
         bodies = split_message(to_whatsapp(reply)) or [FALLBACK_REPLY]
     except Exception:
         logger.exception("Unhandled error")

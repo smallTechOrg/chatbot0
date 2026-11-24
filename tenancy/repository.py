@@ -49,3 +49,25 @@ def count_conversations(conn, tenant_id: int) -> int:
         )
         row = cur.fetchone()
         return int(row[0]) if row else 0
+
+
+@with_connection
+def trial_status(conn, domain_key: str, session_id: str) -> dict[str, Any] | None:
+    """What the trial cap needs for one chat message, in one query; None when no tenant owns the domain key."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            SELECT t.enabled,
+                   t.trial_conversation_limit AS "limit",
+                   EXISTS (SELECT 1 FROM chat_info WHERE session_id = %s) AS has_session,
+                   CASE WHEN t.enabled THEN 0 ELSE (
+                       SELECT COUNT(DISTINCT c.session_id) FROM chat_info c
+                       WHERE c.domain IN (SELECT key FROM domains WHERE tenant_id = t.id)
+                   ) END AS used
+            FROM domains d JOIN tenants t ON t.id = d.tenant_id
+            WHERE d.key = %s
+            ORDER BY d.id LIMIT 1
+            """,
+            (session_id, domain_key),
+        )
+        return cur.fetchone()
