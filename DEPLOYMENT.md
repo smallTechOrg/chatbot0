@@ -189,6 +189,9 @@ shows the service URL and the image.
 **Health check**:
 ```bash
 curl https://<service-url>/health
+# the frontend (built into the image): expect 200 and a <title>
+curl -s https://<service-url>/pricing/ | grep -o '<title>[^<]*'
+curl -s -o /dev/null -w '%{http_code}\n' https://<service-url>/embed.js
 # 200 when the database is reachable, 503 when it is not:
 # {"message":"Hello World","database":"connected","pool":{...}}
 ```
