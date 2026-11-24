@@ -84,7 +84,7 @@ You can re-run a deploy by hand: Actions → *Deploy to Cloud Run* → *Run work
 | Where | Name | Notes |
 |---|---|---|
 | Variable in the `staging` and `production` environments | `GCP_PROJECT` | `ai-agent-boilerplate0` |
-| Variable in the `staging` and `production` environments | `GCP_SA_KEY` | JSON key of `github-deployer@` |
+| Secret (preferred) or variable in the `staging` and `production` environments | `GCP_SA_KEY` | JSON key of `github-deployer@`. The workflow uses the secret when it exists, and the variable otherwise (see below) |
 | Variable in the `staging` and `production` environments | `APP_ENV` | `staging` / `production` |
 | Variable in the `staging` and `production` environments | `DB_NAME` | `staging_chat_db` / `prod_chat_db` |
 | Variable in the `staging` and `production` environments | `DASHBOARD_URL` | the dashboard the Slack summary links to |
@@ -96,6 +96,17 @@ You can re-run a deploy by hand: Actions → *Deploy to Cloud Run* → *Run work
 | Repository variable (optional) | `CLOUD_RUN_CONCURRENCY` | default `8`; keep it equal to gunicorn's `--threads` |
 | Repository variable | `CLOUD_SCHEDULER_ENABLED` | the summary job runs only when this is `true`; paused otherwise |
 | Repository variable (optional) | `GROQ_MODEL_NAME` | default `openai/gpt-oss-120b` |
+
+**Moving `GCP_SA_KEY` from a variable to a secret (owner step).** A variable is shown in plain text to anyone
+with access to the repository settings; a secret is not. The workflow reads `secrets.GCP_SA_KEY || vars.GCP_SA_KEY`
+(for the credentials and for the "is it set" check), so nothing changes until the secret exists, and nothing
+breaks when it does. For each of the `staging` and `production` environments:
+
+1. Settings > Environments > *environment* > Environment secrets > Add secret, name `GCP_SA_KEY`, value the same JSON key.
+2. Push to `staging` and watch the deploy go green (the secret now wins over the variable).
+3. Only then delete the `GCP_SA_KEY` variable from that environment.
+
+Agents never create or delete these.
 
 ## One-time Setup
 
