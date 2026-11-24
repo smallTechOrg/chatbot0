@@ -5,6 +5,7 @@ import { ApiError, sites as sitesApi, type PromptKind, type Prompts, type Site }
 import { WIDGET_ORIGIN } from "@/content/site";
 import { buildEmbedScript } from "@/lib/signup";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
+import PromptChain from "./PromptChain";
 import { useMe } from "./SessionContext";
 
 const PROMPT_LABELS: Record<PromptKind, { title: string; help: string; rows: number }> = {
@@ -106,6 +107,12 @@ function SiteCard({ site, editable }: { site: Site; editable: boolean }) {
           {copied ? "Copied!" : "Copy"}
         </button>
         <span className="sr-only">The widget loads from {WIDGET_ORIGIN}.</span>
+      </details>
+      <details className="mt-3">
+        <summary className="cursor-pointer text-sm font-semibold">Where the agent&apos;s prompts come from</summary>
+        <div className="mt-2">
+          <PromptChain siteKey={site.key} />
+        </div>
       </details>
       <div className="mt-3">
         <button type="button" className={btnSecondary} aria-expanded={open} onClick={() => setOpen(!open)}>

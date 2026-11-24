@@ -11,8 +11,9 @@ from werkzeug.security import generate_password_hash
 from auth import repository as users
 from auth import service as auth
 from auth.service import AuthError
+from chat.prompt_chain import describe
 from chat.prompt_store import upsert_prompt
-from chat.prompts import find_parent_key, find_prompt
+from chat.prompts import resolve_prompt
 from domains import DomainAlreadyExistsError, DomainRepository, DomainService, InvalidWebsiteURLError
 from summary.slack import notify_signup
 from tenancy import repository
@@ -128,16 +129,19 @@ def _owned_key(user: dict[str, Any], key: str) -> None:
 
 
 def get_prompts(user: dict[str, Any], key: str) -> dict[str, dict[str, Any]]:
-    """Each prompt as {text, own}: own=False means the text is inherited from the parent domain."""
+    """Each prompt as {text, own}: own=False means the text is inherited from an ancestor (the whole chain)."""
     _owned_key(user, key)
-    parent = find_parent_key(key)
     result: dict[str, dict[str, Any]] = {}
     for kind in PROMPT_TYPES:
-        row = find_prompt(key, AGENT, kind)
-        inherited = None if row or not parent else find_prompt(parent, AGENT, kind)
-        text = (row or inherited or ("",))[0] or ""
-        result[kind] = {"text": text, "own": bool(row)}
+        text, source = resolve_prompt(key, AGENT, kind)
+        result[kind] = {"text": text or "", "own": source == key}
     return result
+
+
+def prompt_chain(user: dict[str, Any], key: str) -> dict[str, Any]:
+    """The parent chain of a website and where each prompt in effect comes from (own users: their websites only)."""
+    _owned_key(user, key)
+    return describe(key)
 
 
 def set_prompts(user: dict[str, Any], key: str, data: dict[str, Any]) -> None:

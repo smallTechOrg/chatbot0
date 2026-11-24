@@ -42,3 +42,10 @@ def get_prompts(key: str):
 def put_prompts(key: str):
     sites.set_prompts(current_user(), key, _body())
     return jsonify({"success": True})
+
+
+@sites_bp.get("/<key>/prompt-chain")
+@guarded
+@login_required
+def get_prompt_chain(key: str):
+    return jsonify(sites.prompt_chain(current_user(), key))
