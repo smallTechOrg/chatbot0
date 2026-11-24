@@ -142,6 +142,24 @@ def notify_whatsapp_problem(connection: dict[str, Any], error: str) -> bool:
         return False
 
 
+def notify_llm_outage(error: str) -> bool:
+    """
+    One line when every chat model fails: "Chat is degraded: ... - RateLimitError: ...". The caller limits how
+    often this is sent. Never raises.
+    """
+    if not config.SLACK_WEBHOOK_URL:
+        logger.warning("[SLACK] SLACK_WEBHOOK_URL is not set. Skipping the LLM outage alert.")
+        return False
+    text = f"*Chat is degraded:* every LLM model failed, visitors see the busy message. {_escape(_clip(error, 300))}"
+    label = config.environment_label()
+    try:
+        post_to_slack({"username": SENDER, "text": f"*[{label}]* {text}" if label else text})
+        return True
+    except Exception as exc:
+        logger.error(f"[SLACK] LLM outage alert failed: {exc}")
+        return False
+
+
 def build_signup_text(address: str, contact: dict[str, Any] | None = None) -> str:
     contact = contact or {}
     parts = [_escape(address)]

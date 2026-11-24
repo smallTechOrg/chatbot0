@@ -12,10 +12,12 @@ from concurrent.futures import ThreadPoolExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
+from chat import outage
 from chat.history import get_session_history
 from chat.lead_capture import process_conversation
+from chat.outage import LLMUnavailable
 from chat.prompts import get_prompt
-from core.llm import get_chat_model
+from core.llm import get_chat_model, is_outage
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,7 @@ def get_groq_response(input_text: str, session_id: str, request_type: str, domai
     """
     The bot's reply to *input_text*, with the session's earlier messages as memory. Lead capture runs
     concurrently and never raises: a failure there must not cost the visitor their answer.
+    Raises LLMUnavailable when every model is down (rate limit, timeout, 5xx); the caller shows BUSY_REPLY.
     """
     with ThreadPoolExecutor(max_workers=1) as pool:
         pool.submit(_capture_lead, input_text, session_id, request_type, domain)
@@ -42,11 +45,30 @@ def _generate_reply(input_text: str, session_id: str, request_type: str, domain:
         input_messages_key="input",
         history_messages_key="history",
     )
-    response = chain_with_history.invoke(
-        {"input": input_text, "system": system_prompt},
-        config={"configurable": {"session_id": session_id}},
-    )
+    try:
+        response = chain_with_history.invoke(
+            {"input": input_text, "system": system_prompt},
+            config={"configurable": {"session_id": session_id}},
+        )
+    except Exception as exc:
+        if not is_outage(exc):
+            raise
+        _save_unanswered(input_text, session_id)
+        outage.report(exc, domain)
+        raise LLMUnavailable(str(exc)) from exc
     return response.content
+
+
+def _save_unanswered(input_text: str, session_id: str) -> None:
+    """
+    Keep the visitor's message in the history, without any bot reply. RunnableWithMessageHistory writes the
+    human and AI messages together once the model answers, so a failed call saves neither; the busy text is
+    not something the model said and must not become part of the conversation it reads next time.
+    """
+    try:
+        get_session_history(session_id).add_user_message(input_text)
+    except Exception:
+        logger.exception("[LLM_API] could not save the unanswered message")
 
 
 def _capture_lead(input_text: str, session_id: str, request_type: str, domain: str) -> None:

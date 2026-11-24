@@ -15,6 +15,7 @@ import uuid
 from collections.abc import Iterator
 
 from chat.engine import get_groq_response
+from chat.outage import BUSY_REPLY, LLMUnavailable
 from core.config import agent_type
 from summary.slack import notify_whatsapp_problem
 from tenancy import service as tenancy
@@ -147,6 +148,8 @@ def handle_text(conn: dict, wa_id: str, name: str | None, text: str) -> None:
         else:
             reply = tenancy.TRIAL_LIMIT_REPLY  # defence in depth: WhatsApp is also locked for disabled tenants
         bodies = split_message(to_whatsapp(reply)) or [FALLBACK_REPLY]
+    except LLMUnavailable:
+        bodies = [BUSY_REPLY]  # already logged and alerted by the engine
     except Exception:
         logger.exception("Unhandled error")
         bodies = [FALLBACK_REPLY]
