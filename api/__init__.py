@@ -6,6 +6,8 @@ from .health import health_bp
 from .jobs import jobs_bp
 from .leads import leads_bp
 from .prompts import prompt_bp
+from .signup import signup_bp
+from .sites import sites_bp
 from .swagger import swaggerui_blueprint
 from .whatsapp import whatsapp_bp
 
@@ -19,3 +21,5 @@ def register_blueprints(app):
     app.register_blueprint(whatsapp_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(leads_bp)
+    app.register_blueprint(signup_bp)
+    app.register_blueprint(sites_bp)
