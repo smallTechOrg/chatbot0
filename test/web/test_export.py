@@ -230,3 +230,9 @@ def test_widget_chat_contract_origin_selects_the_domain(client, monkeypatch):
     assert res.status_code == 200
     assert res.get_json()["success"] is True
     assert seen["domain"]
+
+
+def test_old_admin_pages_are_not_swallowed_by_the_prefix_redirect(client):
+    """/chatbot0/<page> redirects to /<page>, but the admin pages under that prefix are real routes."""
+    for path in ("/chatbot0/admin/login", "/chatbot0/admin/whatsapp"):
+        assert client.get(path).status_code != 301

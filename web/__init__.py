@@ -57,7 +57,7 @@ def _file_response(path: Path, rel: str) -> Response:
     return response
 
 
-def _serves_frontend(error: NotFound) -> bool:
+def _serves_frontend() -> bool:
     """Only an unmatched GET/HEAD outside /api/ is a page request; a 404 an API route raised is its own."""
     return request.url_rule is None and request.method in ("GET", "HEAD") and not request.path.startswith("/api/")
 
@@ -92,7 +92,7 @@ def register_frontend(app: Flask, root: Path = FRONTEND_DIR, api_error: ErrorHan
 
     @app.errorhandler(404)
     def not_found(error: NotFound) -> Any:
-        if _serves_frontend(error):
+        if _serves_frontend():
             try:
                 return serve(request.path) or _not_found_page()
             except NotFound:
