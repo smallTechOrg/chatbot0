@@ -126,3 +126,13 @@ def sign_in(client, email: str, password: str = TEST_PASSWORD) -> str:
     res = client.post("/api/auth/login", json={"email": email, "password": password})
     assert res.status_code == 200, res.get_json()
     return res.get_json()["csrf"]
+
+
+@pytest.fixture(autouse=True)
+def _fresh_ai_settings_cache():
+    """The AI provider setting is cached in the process; no test may see another test's value."""
+    from core import ai_settings
+
+    ai_settings.invalidate()
+    yield
+    ai_settings.invalidate()

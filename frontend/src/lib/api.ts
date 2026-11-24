@@ -314,6 +314,43 @@ export const slack = {
   test: () => request<unknown>("/api/slack/test", { method: "POST", body: {} }),
 };
 
+export interface AiProviderStatus {
+  /** "database": saved on /admin/; "environment": the Groq settings of the deployment. */
+  source: "database" | "environment";
+  base_url: string | null;
+  /** A key is stored. The key itself is never returned. */
+  key_set: boolean;
+  model: string;
+  backup_model: string | null;
+  timeout_seconds: number | null;
+  updated_at: string | null;
+}
+
+export interface AiProviderInput {
+  base_url: string;
+  /** Leave it out to keep the stored key. */
+  api_key?: string;
+  model: string;
+  backup_model: string;
+  timeout_seconds: number;
+}
+
+export interface AiTestResult {
+  role: "primary" | "backup";
+  model: string;
+  ok: boolean;
+  /** Error type and HTTP status only, e.g. "HTTP 401 (AuthenticationError)". */
+  error?: string;
+}
+
+/** The platform's AI provider (admins only). */
+export const aiProvider = {
+  status: () => request<AiProviderStatus>("/api/admin/ai-provider"),
+  save: (input: AiProviderInput) => request<AiProviderStatus>("/api/admin/ai-provider", { method: "PUT", body: input }),
+  remove: () => request<AiProviderStatus>("/api/admin/ai-provider", { method: "DELETE" }),
+  test: () => request<{ ok: boolean; results: AiTestResult[] }>("/api/admin/ai-provider/test", { method: "POST", body: {} }),
+};
+
 export interface AdminUser {
   id: number;
   email: string;

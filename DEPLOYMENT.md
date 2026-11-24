@@ -108,6 +108,13 @@ breaks when it does. For each of the `staging` and `production` environments:
 
 Agents never create or delete these.
 
+**AI provider.** By default every LLM call uses the Groq settings of the deployment (`GROQ_API_KEY`,
+`GROQ_MODEL_NAME`, `GROQ_BACKUP_MODEL_NAME`). A chatbot0 admin can instead save an OpenAI-compatible endpoint on
+/admin/ (base URL, API key, primary model, optional backup model, timeout). It is stored in the database (the key
+encrypted with `CHATBOT0_SECRET_KEY`), read through a 60-second per-instance cache, and applies to the chat reply,
+lead capture and summaries together, with no redeploy. "Use the deployment's Groq settings" removes it again. If the
+stored key cannot be decrypted (the secret key changed) the deployment's Groq settings are used and an error is logged.
+
 ## One-time Setup
 
 Run once per GCP project, as a project Owner:

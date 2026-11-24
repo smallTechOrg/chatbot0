@@ -276,6 +276,16 @@ def ensure_tenancy_tables_exist(sync_connection):
             -- Slack on/off (the webhook is kept while off) and the link the tenant's summary header points at.
             ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slack_enabled BOOLEAN NOT NULL DEFAULT TRUE;
             ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slack_dashboard_url TEXT;
+            -- The platform's AI provider (one row; see core/ai_settings.py). The key is encrypted.
+            CREATE TABLE IF NOT EXISTS ai_provider_settings (
+                id INT PRIMARY KEY CHECK (id = 1),
+                base_url TEXT NOT NULL,
+                api_key_enc TEXT,
+                model TEXT NOT NULL,
+                backup_model TEXT,
+                timeout_seconds INT NOT NULL DEFAULT 60,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
             -- When each rate-limited alert (see core/throttle.py) was last sent.
             CREATE TABLE IF NOT EXISTS alert_throttle (
                 key TEXT PRIMARY KEY,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { admin, ApiError, whatsapp, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
 import { PLANS } from "@/content/plans";
+import AiProviderSettings from "./AiProviderSettings";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
 
 // The plan keys are the pricing plans' keys: the server validates them against the same list.
@@ -187,6 +188,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Admin</h1>
+      <AiProviderSettings />
       {error && (
         <p role="alert" className={alertError}>
           {error}
