@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { admin, ApiError, whatsapp, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
 import { PLANS } from "@/content/plans";
+import PromptChain from "./PromptChain";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
 
 // The plan keys are the pricing plans' keys: the server validates them against the same list.
@@ -166,6 +167,27 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
   );
 }
 
+/** Any website's prompt hierarchy, for admins: pick a website to see where each of its prompts comes from. */
+function PromptHierarchy({ keys }: { keys: string[] }) {
+  const [key, setKey] = useState("");
+  const chosen = key || keys[0] || "";
+  if (keys.length === 0) return null;
+  return (
+    <section className={`${card} space-y-3`} aria-labelledby="prompt-hierarchy">
+      <h2 id="prompt-hierarchy" className="text-lg font-bold">Prompt hierarchy</h2>
+      <div>
+        <label className={label} htmlFor="hierarchy-key">Website</label>
+        <select id="hierarchy-key" className={`${input} w-64`} value={chosen} onChange={(e) => setKey(e.target.value)}>
+          {keys.map((k) => (
+            <option key={k} value={k}>{k}</option>
+          ))}
+        </select>
+      </div>
+      <PromptChain siteKey={chosen} />
+    </section>
+  );
+}
+
 /** For chatbot0 admins: every account, its usage and users; enable, set the trial limit, invite, reset, move websites. */
 export default function AdminPage() {
   const [tenants, setTenants] = useState<AdminTenant[] | null>(null);
@@ -197,6 +219,7 @@ export default function AdminPage() {
       ) : (
         tenants.map((t) => <TenantCard key={t.id} tenant={t} others={tenants.filter((o) => o.id !== t.id)} onChanged={load} />)
       )}
+      {tenants && <PromptHierarchy keys={[...new Set(tenants.flatMap((t) => t.domain_keys))].sort()} />}
       <section className={card} aria-labelledby="all-wa">
         <h2 id="all-wa" className="mb-2 text-lg font-bold">All WhatsApp connections</h2>
         {connections.length === 0 ? (
