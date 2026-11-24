@@ -1,13 +1,44 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { admin, ApiError, whatsapp, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
+import { admin, ApiError, whatsapp, type AdminDomain, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
 import { PLANS } from "@/content/plans";
 import AiProviderSettings from "./AiProviderSettings";
+import PromptChain from "./PromptChain";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
 
 // The plan keys are the pricing plans' keys: the server validates them against the same list.
 const PLAN_OPTIONS = PLANS.map((p) => ({ key: p.key, name: p.name }));
+
+/** The websites an account owns: address, key, parent website and whether the row is a www alias. */
+function WebsiteList({ domains }: { domains: AdminDomain[] }) {
+  if (domains.length === 0) return <p className="text-sm text-muted">No websites yet.</p>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <caption className="sr-only">Websites of this account</caption>
+        <thead className="text-xs text-muted">
+          <tr>
+            <th scope="col" className="py-1 pr-4 font-semibold">Address</th>
+            <th scope="col" className="py-1 pr-4 font-semibold">Key</th>
+            <th scope="col" className="py-1 pr-4 font-semibold">Parent</th>
+            <th scope="col" className="py-1 font-semibold">Type</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line">
+          {domains.map((d) => (
+            <tr key={d.id}>
+              <td className="py-1 pr-4">{d.address}</td>
+              <td className="py-1 pr-4 font-mono text-xs">{d.key}</td>
+              <td className="py-1 pr-4">{d.parent_key ? `${d.parent_key} (${d.parent_address})` : "none"}</td>
+              <td className="py-1">{d.is_www_alias ? "www alias" : "website"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 /** A link the admin copies and sends by hand (no email service yet). */
 function LinkBox({ link, onClose }: { link: string; onClose: () => void }) {
@@ -50,7 +81,8 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
           {tenant.enabled ? "Enabled" : "Trial"}
         </span>
         <span className="text-sm text-muted">
-          {tenant.conversations} conversations, {tenant.month_conversations} this month
+          {tenant.site_count} {tenant.site_count === 1 ? "website" : "websites"}
+          {tenant.domain_count !== tenant.site_count ? ` (${tenant.domain_count} rows)` : ""}, {tenant.conversations} conversations, {tenant.month_conversations} this month
           {tenant.monthly_limit === null ? " (no limit)" : ` of ${tenant.monthly_limit}`}
         </span>
         <button type="button" className={`${tenant.enabled ? btnSecondary : btnPrimary} ml-auto`} onClick={() => void run(() => admin.updateTenant(tenant.id, { enabled: !tenant.enabled }))}>
@@ -90,6 +122,15 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
         </div>
         <p className="text-xs text-muted">Sets the monthly conversation cap once the account is enabled.</p>
       </div>
+
+      <details>
+        <summary className="cursor-pointer text-sm font-bold">
+          Websites ({tenant.site_count})
+        </summary>
+        <div className="mt-2">
+          <WebsiteList domains={tenant.domains} />
+        </div>
+      </details>
 
       <div>
         <h3 className="text-sm font-bold">Users</h3>
@@ -167,6 +208,27 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
   );
 }
 
+/** Any website's prompt hierarchy, for admins: pick a website to see where each of its prompts comes from. */
+function PromptHierarchy({ keys }: { keys: string[] }) {
+  const [key, setKey] = useState("");
+  const chosen = key || keys[0] || "";
+  if (keys.length === 0) return null;
+  return (
+    <section className={`${card} space-y-3`} aria-labelledby="prompt-hierarchy">
+      <h2 id="prompt-hierarchy" className="text-lg font-bold">Prompt hierarchy</h2>
+      <div>
+        <label className={label} htmlFor="hierarchy-key">Website</label>
+        <select id="hierarchy-key" className={`${input} w-64`} value={chosen} onChange={(e) => setKey(e.target.value)}>
+          {keys.map((k) => (
+            <option key={k} value={k}>{k}</option>
+          ))}
+        </select>
+      </div>
+      <PromptChain siteKey={chosen} />
+    </section>
+  );
+}
+
 /** For chatbot0 admins: every account, its usage and users; enable, set the trial limit, invite, reset, move websites. */
 export default function AdminPage() {
   const [tenants, setTenants] = useState<AdminTenant[] | null>(null);
@@ -199,6 +261,7 @@ export default function AdminPage() {
       ) : (
         tenants.map((t) => <TenantCard key={t.id} tenant={t} others={tenants.filter((o) => o.id !== t.id)} onChanged={load} />)
       )}
+      {tenants && <PromptHierarchy keys={[...new Set(tenants.flatMap((t) => t.domain_keys))].sort()} />}
       <section className={card} aria-labelledby="all-wa">
         <h2 id="all-wa" className="mb-2 text-lg font-bold">All WhatsApp connections</h2>
         {connections.length === 0 ? (

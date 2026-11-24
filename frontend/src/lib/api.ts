@@ -241,9 +241,29 @@ export const sites = {
   add: (website: string) =>
     request<{ domain: { key: string; address: string } }>("/api/domains", { method: "POST", body: { website } }),
   prompts: async (key: string) => (await request<{ prompts: Prompts }>(`/api/domains/${encodeURIComponent(key)}/prompts`)).prompts,
+  promptChain: (key: string) => request<PromptChain>(`/api/domains/${encodeURIComponent(key)}/prompt-chain`),
   savePrompts: (key: string, prompts: Partial<Record<PromptKind, string>>) =>
     request<unknown>(`/api/domains/${encodeURIComponent(key)}/prompts`, { method: "PUT", body: prompts }),
 };
+
+export interface PromptSource {
+  agent_type: "sales" | "generic";
+  type: string;
+  /** The domain key the text in effect comes from; null when no domain in the chain has it. */
+  source: string | null;
+  origin: "own" | "inherited" | "default" | "missing";
+  /** "own", "inherited from X", "default (COMMON)" or "not set anywhere in the chain". */
+  label: string;
+  preview: string;
+}
+
+export interface PromptChain {
+  key: string;
+  /** The website, then its parent, and so on, nearest first. */
+  chain: string[];
+  ends_at_default: boolean;
+  prompts: PromptSource[];
+}
 
 export interface WhatsAppConnection {
   id: string;
@@ -359,6 +379,17 @@ export interface AdminUser {
   last_login_at: string | null;
 }
 
+export interface AdminDomain {
+  id: number;
+  key: string;
+  address: string;
+  parent_id: number | null;
+  parent_key: string | null;
+  parent_address: string | null;
+  /** A "www." row that shares its main website's key. */
+  is_www_alias: boolean;
+}
+
 export interface AdminTenant {
   id: number;
   name: string;
@@ -370,6 +401,11 @@ export interface AdminTenant {
   conversations: number;
   users: AdminUser[];
   domain_keys: string[];
+  domains: AdminDomain[];
+  /** All domain rows, www aliases included. */
+  domain_count: number;
+  /** Websites, without the www aliases. */
+  site_count: number;
 }
 
 export const admin = {

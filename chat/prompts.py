@@ -1,4 +1,4 @@
-"""Look up a domain's prompts, inheriting from its parent domain, and build the system prompt."""
+"""Look up a domain's prompts, inheriting up its whole parent chain, and build the system prompt."""
 
 import logging
 
@@ -19,7 +19,7 @@ Formatting Rules:
 
 
 def get_prompt(domain: str, agent_type: str, prompt_type: str) -> str:
-    """The prompt text for a domain. A domain without its own prompt uses its parent domain's."""
+    """The prompt text for a domain. A domain without its own prompt uses its nearest ancestor's."""
     if prompt_type == "system" and agent_type == "sales":
         common_prompt = load_prompt_from_db(domain, agent_type, "base-prompt")
         company_prompt = load_prompt_from_db(domain, agent_type, "company")
@@ -37,25 +37,46 @@ def get_prompt(domain: str, agent_type: str, prompt_type: str) -> str:
     return prompt or ""
 
 
-def load_prompt_from_db(domain: str, agent_type: str, prompt_type: str):
+#: How many domains a chain can have. A real chain is two or three long; the cap stops a bad parent loop.
+MAX_CHAIN = 10
+
+
+def parent_chain(key: str) -> list[str]:
     """
-    Fetch a prompt's text from the DB (JSON or plain text), cache for fast access.
+    The domain keys a prompt is looked up through, nearest first: [key, its parent, the parent's parent, ...].
+    The walk stops at a domain with no parent, at a key it has already seen (a parent loop), or at MAX_CHAIN.
+    """
+    chain = [key]
+    current = key
+    while len(chain) < MAX_CHAIN:
+        parent = find_parent_key(current)
+        if not parent or parent in chain:
+            break
+        chain.append(parent)
+        current = parent
+    return chain
+
+
+def resolve_prompt(domain: str, agent_type: str, prompt_type: str) -> tuple[str | None, str | None]:
+    """
+    The effective prompt for a domain: (text, the key of the domain it comes from). The domain's own prompt wins;
+    without one, the nearest ancestor's is used, all the way up the parent chain. (None, None) when no domain in
+    the chain has it.
     """
     try:
-        row = find_prompt(domain, agent_type, prompt_type)
-
-        if row is None:
-            logger.info(f"Prompt not found in DB: {domain}/{agent_type}/{prompt_type}, looking for parent prompt")
-            parent_domain = find_parent_key(domain)
-            row = find_prompt(parent_domain, agent_type, prompt_type)
-            if row is None:
-                logger.info(f"Prompt not found in DB for parent Domain: {domain}/{agent_type}/{prompt_type}")
-                return None
-
-        return row[0]
-
+        for key in parent_chain(domain):
+            row = find_prompt(key, agent_type, prompt_type)
+            if row is not None:
+                return row[0], key
+            logger.info(f"Prompt not found in DB: {key}/{agent_type}/{prompt_type}, looking at the parent domain")
+        return None, None
     except Exception as e:
         raise RuntimeError(f"Failed to load prompt from DB: {e}") from e
+
+
+def load_prompt_from_db(domain: str, agent_type: str, prompt_type: str):
+    """The effective prompt text for a domain (see resolve_prompt), or None."""
+    return resolve_prompt(domain, agent_type, prompt_type)[0]
 
 
 @with_connection
@@ -66,7 +87,9 @@ def find_parent_key(conn, key):
             SELECT parent.key
             FROM domains child
             LEFT JOIN domains parent ON child.parent = parent.id
-            WHERE child.key = %s;
+            WHERE child.key = %s
+            ORDER BY child.id
+            LIMIT 1;
         """,
             (key,),
         )

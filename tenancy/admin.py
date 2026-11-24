@@ -18,7 +18,15 @@ class AdminError(ServiceError):
 
 def list_tenants() -> list[dict[str, Any]]:
     tenants = repository.list_tenants_with_usage(plans.month_start())
-    return [{**t, "monthly_limit": plans.monthly_limit(t["plan"])} for t in tenants]
+    return [
+        {
+            **t,
+            "monthly_limit": plans.monthly_limit(t["plan"]),
+            "domain_count": len(t["domains"]),
+            "site_count": sum(1 for d in t["domains"] if not d["is_www_alias"]),
+        }
+        for t in tenants
+    ]
 
 
 def update_tenant(tenant_id: int, data: dict[str, Any]) -> dict[str, Any]:
