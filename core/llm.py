@@ -1,5 +1,6 @@
 """The one place a chat model is built, so the provider, model and fallback are decided once."""
 
+import groq
 from langchain_core.runnables import Runnable
 from langchain_groq import ChatGroq
 
@@ -19,3 +20,13 @@ def get_chat_model() -> Runnable:
     if config.GROQ_BACKUP_MODEL_NAME:
         return primary.with_fallbacks([_groq(config.GROQ_BACKUP_MODEL_NAME)])
     return primary
+
+
+def is_outage(exc: BaseException) -> bool:
+    """
+    Whether *exc* means the model service is unavailable right now: a rate limit (429), a timeout or lost
+    connection, or a 5xx. Other errors (a bad key, a malformed request) are our bugs and stay errors.
+    """
+    if isinstance(exc, (groq.RateLimitError, groq.APIConnectionError, groq.InternalServerError)):
+        return True  # APIConnectionError includes APITimeoutError
+    return isinstance(exc, groq.APIStatusError) and exc.status_code >= 500
