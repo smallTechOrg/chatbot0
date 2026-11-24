@@ -7,7 +7,6 @@ from flask import Flask, render_template
 from flask_cors import CORS
 from flask_smorest import Api
 
-from admin import admin_bp
 from api import register_blueprints
 from api.domains import domains_bp
 from core import crypto
@@ -51,9 +50,9 @@ def create_app() -> Flask:
     # -- Existing blueprints (health, chat, prompts, legacy swagger UI) --------
     register_blueprints(flask_app)
 
-    # -- Admin pages (/chatbot0/admin/) ---------------------------------------
+    # -- Sessions ---------------------------------------------------------------
     # The login cookie is signed with a key derived from CHATBOT0_SECRET_KEY.
-    # Without it the admin pages answer 503 and no cookie is ever issued.
+    # Without it nobody can sign in (the auth endpoints answer 503).
     if CHATBOT0_SECRET_KEY:
         flask_app.secret_key = crypto.session_signing_key()
     flask_app.config.update(
@@ -62,7 +61,6 @@ def create_app() -> Flask:
         SESSION_COOKIE_SECURE=APP_ENV != "local",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
     )
-    flask_app.register_blueprint(admin_bp)
 
     # -- Smorest-managed blueprints (auto-documented) --------------------------
     smorest_api = Api(flask_app)

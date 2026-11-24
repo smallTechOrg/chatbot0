@@ -241,10 +241,10 @@ def test_widget_chat_contract_origin_selects_the_domain(client, monkeypatch):
     assert seen["domain"]
 
 
-def test_old_admin_pages_are_not_swallowed_by_the_prefix_redirect(client):
-    """/chatbot0/<page> redirects to /<page>, but the admin pages under that prefix are real routes."""
-    for path in ("/chatbot0/admin/login", "/chatbot0/admin/whatsapp"):
-        assert client.get(path).status_code != 301
+def test_old_admin_urls_lead_to_the_login_page(client):
+    for path in ("/chatbot0/admin/", "/chatbot0/admin/login", "/chatbot0/admin/whatsapp/abc"):
+        res = client.get(path)
+        assert res.status_code == 301 and res.headers["Location"].endswith("/login/")
 
 
 # ---------------------------------------------------------------- the signed-in app (client-rendered pages)
