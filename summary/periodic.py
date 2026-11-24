@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage
 from psycopg import sql
 from psycopg.rows import dict_row
 
@@ -241,7 +241,7 @@ def summarise_conversation(conversation: list[dict[str, str]]) -> str:
 
     prompt = _get_summary_prompt_template().replace("{conversation}", _format_conversation_transcript(conversation))
     llm = get_chat_model()
-    response = llm.invoke([SystemMessage(content=prompt)])
+    response = llm.invoke([HumanMessage(content=prompt)])
     return response.content.strip()
 
 
