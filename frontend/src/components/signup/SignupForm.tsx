@@ -5,32 +5,27 @@ import { DEFAULT_WIDGET_COLOUR, WIDGET_COLOURS, mailto, CONTACT_EMAIL } from "@/
 import { FREE_CONVERSATIONS } from "@/content/plans";
 import { useSignup } from "@/hooks/useSignup";
 import { trackSite } from "@/lib/analytics";
-import { isFormValid, isHexColour, type ContactMethod } from "@/lib/signup";
+import { MIN_PASSWORD_LENGTH, isFormValid, isHexColour } from "@/lib/signup";
 import EmbedResult from "./EmbedResult";
-
-const METHODS: ReadonlyArray<{ id: ContactMethod; label: string }> = [
-  { id: "email", label: "Email" },
-  { id: "phone", label: "Phone" },
-];
 
 /** The sign-up form, and after a successful submit the embed script. Phase 3 turns this into account creation. */
 export default function SignupForm() {
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
-  const [contactMethod, setContactMethod] = useState<ContactMethod>("email");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
   const [colour, setColour] = useState<string>(DEFAULT_WIDGET_COLOUR);
   const startTracked = useRef(false);
-  const { isSubmitting, error, embedScript, submit, reset } = useSignup();
+  const { isSubmitting, error, embedScript, submit } = useSignup();
 
-  const fields = { name, website, contactMethod, email, phone };
+  const fields = { name, website, email, password };
   const canSubmit = isFormValid(fields) && !isSubmitting;
   const pickerValue = isHexColour(colour) ? colour.toLowerCase() : DEFAULT_WIDGET_COLOUR.toLowerCase();
 
   if (embedScript) {
-    return <EmbedResult script={embedScript} colour={colour} onRestart={reset} />;
+    return <EmbedResult script={embedScript} colour={colour} />;
   }
 
   return (
@@ -61,7 +56,7 @@ export default function SignupForm() {
         id="signup-form"
         onSubmit={(e) => {
           e.preventDefault();
-          if (canSubmit) void submit({ ...fields, description, colour });
+          if (canSubmit) void submit({ ...fields, phone, description, colour });
         }}
       >
         <div className="pub-field">
@@ -101,55 +96,52 @@ export default function SignupForm() {
           />
         </div>
 
-        <fieldset className="pub-field">
-          <legend className="pub-field__label">Contact method</legend>
-          <div className="pub-toggle" role="group" aria-label="Contact method">
-            {METHODS.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className="pub-toggle__opt"
-                aria-pressed={contactMethod === m.id}
-                onClick={() => setContactMethod(m.id)}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-          {contactMethod === "email" ? (
-            <>
-              <label className="pub-sr" htmlFor="su-email">
-                Email
-              </label>
-              <input
-                className="pub-input"
-                id="su-email"
-                type="email"
-                placeholder="jane@example.com"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </>
-          ) : (
-            <>
-              <label className="pub-sr" htmlFor="su-phone">
-                Phone
-              </label>
-              <input
-                className="pub-input"
-                id="su-phone"
-                type="tel"
-                placeholder="+919876543210"
-                autoComplete="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </>
-          )}
-        </fieldset>
+        <div className="pub-field">
+          <label className="pub-field__label" htmlFor="su-email">
+            Email
+          </label>
+          <input
+            className="pub-input"
+            id="su-email"
+            type="email"
+            placeholder="jane@example.com"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="pub-field">
+          <label className="pub-field__label" htmlFor="su-password">
+            Password <span className="pub-field__hint">(at least {MIN_PASSWORD_LENGTH} characters; you sign in to your dashboard with it)</span>
+          </label>
+          <input
+            className="pub-input"
+            id="su-password"
+            type="password"
+            autoComplete="new-password"
+            minLength={MIN_PASSWORD_LENGTH}
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+
+        <div className="pub-field">
+          <label className="pub-field__label" htmlFor="su-phone">
+            Phone <span className="pub-field__hint">(optional)</span>
+          </label>
+          <input
+            className="pub-input"
+            id="su-phone"
+            type="tel"
+            placeholder="+919876543210"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
 
         <div className="pub-field">
           <label className="pub-field__label" htmlFor="su-prompt">

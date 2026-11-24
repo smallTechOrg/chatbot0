@@ -2,14 +2,13 @@
 
 import { WIDGET_FRAME_PATH, WIDGET_ORIGIN } from "@/content/site";
 
-export type ContactMethod = "email" | "phone";
+export const MIN_PASSWORD_LENGTH = 10;
 
 export interface SignupFields {
   name: string;
   website: string;
-  contactMethod: ContactMethod;
   email: string;
-  phone: string;
+  password: string;
 }
 
 const HEX_COLOUR = /^#[0-9A-Fa-f]{6}$/;
@@ -18,10 +17,9 @@ export function isHexColour(value: string): boolean {
   return HEX_COLOUR.test(value);
 }
 
-/** The form can be submitted when the name, the website and the chosen contact method are filled in. */
+/** The form can be submitted when name, website and email are filled in and the password is long enough. */
 export function isFormValid(f: SignupFields): boolean {
-  const contact = f.contactMethod === "email" ? f.email : f.phone;
-  return f.name.trim() !== "" && f.website.trim() !== "" && contact.trim() !== "";
+  return f.name.trim() !== "" && f.website.trim() !== "" && f.email.trim() !== "" && f.password.length >= MIN_PASSWORD_LENGTH;
 }
 
 /** The one-line script a customer pastes into their site. */

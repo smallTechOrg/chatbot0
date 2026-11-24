@@ -61,3 +61,8 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   `@fontsource-variable/*` npm packages. Lesson: a build must not depend on third-party hosts at build time.
 - **Check what a "gap" means before deleting.** The plan deletes the Jinja admin in slice 4, but the React admin
   is slice 6; deleting it first would leave no way to manage WhatsApp. Deletion moved to slice 6.
+- **Reset and invite tokens would have gone to Google Analytics.** `/accept/?token=...` is a public page and
+  st-analytics.js only skipped dashboard/embed/chat/admin/app. Fix: login and accept are private paths in
+  chatbot0's copy of the script, the page sends `referrer: no-referrer`, and the form strips the token from the
+  URL once read. Lesson: a one-time secret in a query string needs the analytics and referrer paths checked.
+- **A failed git add hid in a chain.** `git add -A -- admin ...` failed on a deleted path, the chain went on and committed only the staged deletions; the branch was pushed with the app importing a deleted package for a few minutes (never merged or deployed). Fix: a follow-up commit; lesson: no `;` after `git add`, check `git status` before commit.

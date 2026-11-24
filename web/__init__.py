@@ -86,8 +86,8 @@ def register_frontend(app: Flask, root: Path = FRONTEND_DIR, api_error: ErrorHan
     @app.get("/chatbot0/", defaults={"page": ""}, strict_slashes=False)
     @app.get("/chatbot0/<path:page>")
     def legacy_prefix(page: str) -> Response:
-        """The pages used to live under /chatbot0/ on the run.app URL."""
-        target = "/" + page
+        """The pages used to live under /chatbot0/ on the run.app URL; the old admin pages are the login now."""
+        target = "/login/" if page == "admin" or page.startswith("admin/") else "/" + page
         return redirect(f"{target}?{request.query_string.decode()}" if request.query_string else target, code=301)
 
     @app.errorhandler(404)

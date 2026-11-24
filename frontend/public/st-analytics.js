@@ -1,6 +1,7 @@
 /* smallTech analytics, v1.1.
    One Google Analytics 4 property (smallTech, G-YTYS0G2P7L) for every smallTech site.
-   This file is copied unchanged into each site's static folder; change it everywhere or nowhere.
+   This file is copied into each site's static folder; change it everywhere or nowhere.
+   chatbot0 copy: login and accept are private paths too (accept links carry a one-time token in the query).
 
    What it does
    - Runs only on the production hostnames in SITES, so local, preview and staging stay out of GA.
@@ -28,7 +29,7 @@
     "blog0.smalltech.in": "blog0",
     "workshop0.smalltech.in": "workshop0"
   };
-  var PRIVATE_PATH = /^\/(dashboard|embed|chat|admin|app)(\/|$)/;
+  var PRIVATE_PATH = /^\/(dashboard|embed|chat|admin|app|login|accept)(\/|$)/;
 
   // Always defined, so callers never need to check whether analytics is on.
   window.stTrack = function () {};

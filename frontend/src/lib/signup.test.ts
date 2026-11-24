@@ -1,19 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { buildEmbedScript, isFormValid, isHexColour, type SignupFields } from "./signup";
 
-const base: SignupFields = { name: "Jane", website: "https://x.com", contactMethod: "email", email: "j@x.com", phone: "" };
+const base: SignupFields = { name: "Jane", website: "https://x.com", email: "j@x.com", password: "long enough pw" };
 
 describe("isFormValid", () => {
-  it("needs a name, a website and the chosen contact method", () => {
+  it("needs a name, a website, an email and a password of at least 10 characters", () => {
     expect(isFormValid(base)).toBe(true);
     expect(isFormValid({ ...base, name: "  " })).toBe(false);
     expect(isFormValid({ ...base, website: "" })).toBe(false);
     expect(isFormValid({ ...base, email: "" })).toBe(false);
-  });
-
-  it("ignores the contact field that is not chosen", () => {
-    expect(isFormValid({ ...base, contactMethod: "phone", email: "j@x.com", phone: "" })).toBe(false);
-    expect(isFormValid({ ...base, contactMethod: "phone", email: "", phone: "+919876543210" })).toBe(true);
+    expect(isFormValid({ ...base, password: "123456789" })).toBe(false);
+    expect(isFormValid({ ...base, password: "1234567890" })).toBe(true);
   });
 });
 

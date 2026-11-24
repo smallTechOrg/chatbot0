@@ -170,3 +170,43 @@ def test_a_failed_test_message_comes_with_a_hint(app, setup, graph):
 def test_unknown_connection_is_404(app, setup):
     client, _ = as_user(app, "a@wa-test.invalid")
     assert client.get("/api/whatsapp/connections/nope").status_code == 404
+
+
+@pytest.mark.parametrize(
+    "pasted",
+    ["\u200e{}\u200f", "\u00a0{} ", "ID: {}", "Phone number ID: {}", "\ufeff{}\u200b", "{}\n"],
+)
+def test_pasted_id_and_credentials_with_invisible_characters_are_cleaned(app, setup, pasted):
+    from whatsapp import repository
+
+    client, csrf = as_user(app, "a@wa-test.invalid")
+    pnid = new_number()
+    res = connect(
+        client, csrf, setup["a"]["key"], number=pasted.format(pnid), access_token="\u200etok ", app_secret=" sec\u00a0"
+    )
+    assert res.status_code == 201, res.get_json()
+    full = repository.get_connection_by_number(pnid)
+    assert (full["access_token"], full["app_secret"]) == ("tok", "sec")
+
+
+def test_a_phone_number_instead_of_the_id_is_explained(app, setup):
+    client, csrf = as_user(app, "a@wa-test.invalid")
+    res = connect(client, csrf, setup["a"]["key"], number="+1 555 0100")
+    assert res.status_code == 400
+    error = res.get_json()["error"]
+    assert "numeric ID" in error and "Received 11 characters" in error
+
+
+def test_a_test_message_outside_the_24_hour_window_comes_with_a_hint(app, setup, graph):
+    client, csrf = as_user(app, "a@wa-test.invalid")
+    cid = connect(client, csrf, setup["a"]["key"]).get_json()["connection"]["id"]
+    graph["send"] = GraphResult(False, None, "HTTP 400: Re-engagement message", 131047)
+    result = client.post(f"/api/whatsapp/connections/{cid}/test", json={"to": "919876543210"}, headers=csrf).get_json()[
+        "result"
+    ]
+    assert "last 24 hours" in result["hint"]
+
+
+def test_the_connection_pages_are_off_without_accounts(app, client, monkeypatch):
+    monkeypatch.setattr(app, "secret_key", None)
+    assert client.get("/api/whatsapp/connections").status_code == 401  # no session can exist without a key

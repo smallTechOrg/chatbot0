@@ -62,7 +62,7 @@ You can re-run a deploy by hand: Actions → *Deploy to Cloud Run* → *Run work
   `CHATBOT0_SECRET_KEY` encrypts the WhatsApp tokens stored in the database
   and signs the admin login. **Do not rotate it casually**: stored tokens
   become unreadable and must be re-entered on the admin page.
-  `CHATBOT0_ADMIN_PASSWORD` is the `/chatbot0/admin/` password; read it with
+  `CHATBOT0_ADMIN_PASSWORD` is the one-time setup password for the first admin account (`/login/`, "First-time setup"); read it with
   `gcloud secrets versions access latest --secret CHATBOT0_ADMIN_PASSWORD`.
 
   A new secret version is picked up by the next deploy (or new instance).
@@ -359,7 +359,7 @@ query with nothing else to run on.
 ## WhatsApp
 
 Each WhatsApp business number is a *connection* added on
-`<service URL>/chatbot0/admin/whatsapp`: phone number ID, domain, access
+`<service URL>/dashboard/whatsapp/`: phone number ID, domain, access
 token and app secret (both stored encrypted). The page then shows the
 connection's own webhook URL (`/whatsapp/webhook/<id>`) and verify token to
 paste into Meta (WhatsApp > Configuration > Webhook; subscribe to `messages`).

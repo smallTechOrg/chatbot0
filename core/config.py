@@ -102,7 +102,8 @@ DEFAULT_DOMAIN = os.getenv("DEFAULT_DOMAIN", "COMMON")
 # cookie. Changing it makes stored tokens unreadable: they must be entered
 # again. Unset: the admin page and the WhatsApp webhooks are off.
 CHATBOT0_SECRET_KEY = os.getenv("CHATBOT0_SECRET_KEY", "").strip()
-# Password of /chatbot0/admin/. Unset: nobody can sign in.
+# The one-time setup password: with it, POST /api/auth/bootstrap (the /login/ page's "First-time setup") creates
+# the first admin account, and only while no admin exists. Unset: setup is off.
 CHATBOT0_ADMIN_PASSWORD = os.getenv("CHATBOT0_ADMIN_PASSWORD", "").strip()
 
 # ---------------------------------------------------------------------------

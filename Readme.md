@@ -187,7 +187,7 @@ tagged `channel = whatsapp` in `chat_info`. Replies are pull-only: the customer
 writes first.
 
 1. Set `CHATBOT0_SECRET_KEY` and `CHATBOT0_ADMIN_PASSWORD` in `.env`.
-2. Sign in at `/chatbot0/admin/` and connect a number (phone number ID, domain,
+2. Sign in at `/login/` and connect a number under WhatsApp (phone number ID, domain,
    access token, app secret).
 3. Paste the shown webhook URL and verify token into the Meta app (WhatsApp >
    Configuration), subscribe to `messages`, and message the number.
