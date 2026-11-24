@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { admin, ApiError, whatsapp, type AdminDomain, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
 import { PLANS } from "@/content/plans";
 import AiProviderSettings from "./AiProviderSettings";
+import ParentPicker from "./ParentPicker";
 import PromptChain from "./PromptChain";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
 
@@ -211,6 +212,8 @@ function TenantCard({ tenant, others, onChanged }: { tenant: AdminTenant; others
 /** Any website's prompt hierarchy, for admins: pick a website to see where each of its prompts comes from. */
 function PromptHierarchy({ keys }: { keys: string[] }) {
   const [key, setKey] = useState("");
+  const [version, setVersion] = useState(0);
+  const [parent, setParent] = useState<string | null>(null);
   const chosen = key || keys[0] || "";
   if (keys.length === 0) return null;
   return (
@@ -224,7 +227,15 @@ function PromptHierarchy({ keys }: { keys: string[] }) {
           ))}
         </select>
       </div>
-      <PromptChain siteKey={chosen} />
+      <ParentPicker
+        key={chosen}
+        siteKey={chosen}
+        current={parent}
+        options={keys}
+        save={admin.setParent}
+        onSaved={() => setVersion((v) => v + 1)}
+      />
+      <PromptChain siteKey={chosen} version={version} onLoaded={(c) => setParent(c.chain[1] ?? null)} />
     </section>
   );
 }

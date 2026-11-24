@@ -143,9 +143,10 @@ For newer APIs visit http://127.0.0.1:5001/api/docs.
 
 ## How prompts are chosen (domain hierarchy)
 
-Every website is a row in `domains`; its `parent` column points at another domain (new sign-ups point at `COMMON`,
-which holds the default prompts). For each prompt the bot needs (sales: `base-prompt`, `company`, `intro-message`,
-`fetch-contact-info`; generic: `system`, `fetch-name`) the lookup is:
+Every website is a row in `domains`; its `parent` column points at another website. The hierarchy is set by people,
+never guessed from host names: a new website starts under `COMMON` (the default prompts), and its owner or an admin
+can move it. For each prompt the bot needs (sales: `base-prompt`, `company`, `intro-message`, `fetch-contact-info`;
+generic: `system`, `fetch-name`) the lookup is:
 
 1. the website's own prompt, if it has one;
 2. otherwise its parent's, then the parent's parent, and so on up the whole chain (at most 10 domains; a parent
@@ -153,10 +154,29 @@ which holds the default prompts). For each prompt the bot needs (sales: `base-pr
 3. if no domain in the chain has it, the prompt is empty. `COMMON` is only used when it is in the chain: a domain
    with no parent does not fall back to it by itself.
 
-Until the chain walk was added (Nov 2026) the lookup looked at the website and its direct parent only. The
-dashboard's Websites page shows, for each website, its lookup order and where every prompt in effect comes from
+Each prompt type is resolved separately: a website can have its own `company` text and still inherit `base-prompt`
+and `intro-message` from further up, and each one can come from a different ancestor.
+
+**Who sets the parent**
+
+- An enabled account sets the parent of its own websites on Websites (`PUT /api/domains/<key>/parent`,
+  body `{"parent_key": "..."}`). The parent must be another website of the same account, or `COMMON`. It can never be
+  another account's website, because the child would inherit that company's prompt.
+- An admin sets any website's parent to any website on /admin/ (`PUT /api/admin/domains/<key>/parent`).
+- Both refuse a website as its own parent, and any change that would make a loop (the check walks up from the
+  proposed parent), with a 400 and a message.
+- The parent belongs to the key, not to one row: a `www.` address shares its main row's key, so every row with the key
+  changes together. Both calls return the new chain, and the prompt-chain view shows it straight away.
+
+The dashboard's Websites page shows, for each website, its lookup order and where every prompt in effect comes from
 ("own", "inherited from X", "default (COMMON)"); admins can see this for any website on /admin/.
 `GET /api/domains/<key>/prompt-chain` returns the same data.
+
+**One-time data migrations.** `core/schema.py` runs each named entry of `DATA_MIGRATIONS` exactly once and records its
+name in `data_migrations`, so a restart never undoes a later manual change. The first one,
+`2026-11-24-smalltech-subdomains-under-smalltech`, moved the `*.smalltech.in` websites of the smallTech account that
+were under `COMMON` to `SMALLTECH` (the `www.smalltech.in` row keeps the SMALLTECH key and is left alone). It logs each
+re-parented key and address at INFO.
 
 ## Frontend (`frontend/`)
 

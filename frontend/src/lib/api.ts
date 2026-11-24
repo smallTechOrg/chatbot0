@@ -133,6 +133,8 @@ export interface Site {
   id: number;
   key: string;
   address: string;
+  /** The website this one inherits prompts from (null: none). Only on the /api/domains list. */
+  parent_key?: string | null;
 }
 
 export interface Me {
@@ -242,6 +244,9 @@ export const sites = {
     request<{ domain: { key: string; address: string } }>("/api/domains", { method: "POST", body: { website } }),
   prompts: async (key: string) => (await request<{ prompts: Prompts }>(`/api/domains/${encodeURIComponent(key)}/prompts`)).prompts,
   promptChain: (key: string) => request<PromptChain>(`/api/domains/${encodeURIComponent(key)}/prompt-chain`),
+  /** Set the parent: another of the account's websites, or COMMON. Returns the new chain. */
+  setParent: async (key: string, parentKey: string) =>
+    (await request<{ chain: PromptChain }>(`/api/domains/${encodeURIComponent(key)}/parent`, { method: "PUT", body: { parent_key: parentKey } })).chain,
   savePrompts: (key: string, prompts: Partial<Record<PromptKind, string>>) =>
     request<unknown>(`/api/domains/${encodeURIComponent(key)}/prompts`, { method: "PUT", body: prompts }),
 };
@@ -416,6 +421,9 @@ export const admin = {
     (await request<{ invite_link: string }>(`/api/admin/tenants/${tenantId}/users`, { method: "POST", body: { email } })).invite_link,
   resetLink: async (userId: number) =>
     (await request<{ link: string }>(`/api/admin/users/${userId}/reset-link`, { method: "POST", body: {} })).link,
+  /** Any website under any website. Returns the new chain. */
+  setParent: async (key: string, parentKey: string) =>
+    (await request<{ chain: PromptChain }>(`/api/admin/domains/${encodeURIComponent(key)}/parent`, { method: "PUT", body: { parent_key: parentKey } })).chain,
   moveDomain: (key: string, tenantId: number) =>
     request<unknown>(`/api/admin/domains/${encodeURIComponent(key)}`, { method: "PATCH", body: { tenant_id: tenantId } }),
 };
