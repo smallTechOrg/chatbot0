@@ -180,7 +180,8 @@ def _header(result: dict[str, Any]) -> str:
     if isinstance(run_at, datetime):
         title = f"{TITLE} - {format_header_time(run_at)}"
     # Slack link syntax: <url|text>. Incoming webhooks render it by default.
-    link = f"<{config.DASHBOARD_URL}|{title}>"
+    # A per-tenant delivery passes its own dashboard link; the global channel uses DASHBOARD_URL.
+    link = f"<{result.get('dashboard_url') or config.DASHBOARD_URL}|{title}>"
     # Staging and local runs post to the same channel; mark them so nobody
     # mistakes a test conversation for a lead.
     label = config.environment_label()

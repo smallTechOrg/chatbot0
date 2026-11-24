@@ -50,22 +50,50 @@ def get_slack_webhook(conn, tenant_id: int) -> str | None:
 
 
 @with_connection
-def slack_routes(conn, domain_keys: list[str]) -> dict[str, tuple[int, str]]:
+def get_slack_prefs(conn, tenant_id: int) -> dict[str, Any] | None:
+    """Slack settings that are safe to show: on/off, the dashboard link, and whether a webhook is set."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            "SELECT slack_enabled AS notifications_on, slack_dashboard_url AS dashboard_url, "
+            "slack_webhook_enc IS NOT NULL AS configured FROM tenants WHERE id = %s",
+            (tenant_id,),
+        )
+        return cur.fetchone()
+
+
+@with_connection
+def set_slack_prefs(conn, tenant_id: int, notifications_on: bool | None, dashboard_url: str | None, clear_url: bool):
+    """Change the given Slack preferences (None leaves one alone); clear_url resets the link to the default."""
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE tenants SET
+                slack_enabled = COALESCE(%s, slack_enabled),
+                slack_dashboard_url = CASE WHEN %s THEN NULL ELSE COALESCE(%s, slack_dashboard_url) END
+            WHERE id = %s
+            """,
+            (notifications_on, clear_url, dashboard_url, tenant_id),
+        )
+
+
+@with_connection
+def slack_routes(conn, domain_keys: list[str]) -> dict[str, tuple[int, str, str | None]]:
     """
-    For each given domain key whose owning tenant has a Slack webhook: {key: (tenant_id, encrypted webhook)}.
+    For each given domain key whose owning tenant has Slack on and a webhook:
+    {key: (tenant_id, encrypted webhook, the tenant's dashboard link or None)}.
     A key belongs to the tenant of its first domain row, the same rule as domain_key_tenant.
     """
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT first.key, t.id, t.slack_webhook_enc
+            SELECT first.key, t.id, t.slack_webhook_enc, t.slack_dashboard_url
             FROM (SELECT DISTINCT ON (key) key, tenant_id FROM domains WHERE key = ANY(%s) ORDER BY key, id) first
             JOIN tenants t ON t.id = first.tenant_id
-            WHERE t.slack_webhook_enc IS NOT NULL
+            WHERE t.slack_webhook_enc IS NOT NULL AND t.slack_enabled
             """,
             (domain_keys,),
         )
-        return {key: (tenant_id, enc) for key, tenant_id, enc in cur.fetchall()}
+        return {key: (tenant_id, enc, url) for key, tenant_id, enc, url in cur.fetchall()}
 
 
 @with_connection

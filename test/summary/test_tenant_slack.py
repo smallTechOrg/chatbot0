@@ -6,7 +6,7 @@ import pytest
 
 from core import config, crypto
 from summary import periodic, slack, tenant_slack
-from tenancy import repository
+from tenancy import repository, slack_settings
 
 HOOK_A = "https://hooks.slack.com/services/TA/BA/aaaa"
 HOOK_B = "https://hooks.slack.com/services/TB/BB/bbbb"
@@ -63,8 +63,9 @@ def test_the_format_is_the_same_as_the_global_message(world, posts):
     _with_hook(a, HOOK_A)
     session = _session(a["key"], "Alice")
     tenant_slack.send_tenant_summaries(_result(session))
-    [expected] = slack.build_messages(_result(session))
+    [expected] = slack.build_messages({**_result(session), "dashboard_url": slack_settings.DEFAULT_DASHBOARD_LINK})
     assert posts == [(HOOK_A, expected["text"])]
+    assert posts[0][1].splitlines()[0].startswith("<https://chatbot0.smalltech.in/dashboard/|")
 
 
 def test_a_tenant_without_a_webhook_gets_nothing_and_others_are_unaffected(world, posts):
@@ -128,3 +129,31 @@ def test_the_periodic_run_still_sends_everything_to_the_global_channel(world, po
     assert len(global_runs) == 1 and result["slack"] == {"sent": 1}
     assert result["tenant_slack"] == {a["id"]: 1}
     assert [url for url, _ in posts] == [HOOK_A]
+
+
+def _set_prefs(tenant, **kw):
+    repository.set_slack_prefs(tenant["id"], kw.get("on"), kw.get("url"), False)
+
+
+def test_a_tenants_own_dashboard_link_is_in_its_header_only(world, posts, monkeypatch):
+    a, b = world.tenant("A"), world.tenant("B")
+    _with_hook(a, HOOK_A)
+    _with_hook(b, HOOK_B)
+    _set_prefs(a, url="https://crm.acme.test/leads")
+    monkeypatch.setattr(slack.config, "DASHBOARD_URL", "https://global.example/dash")
+    tenant_slack.send_tenant_summaries(_result(_session(a["key"], "Alice"), _session(b["key"], "Bob")))
+    text = dict(posts)
+    assert text[HOOK_A].startswith("<https://crm.acme.test/leads|")
+    assert text[HOOK_B].startswith("<https://chatbot0.smalltech.in/dashboard/|")
+    assert "global.example" not in text[HOOK_A] + text[HOOK_B]
+    # The global channel keeps DASHBOARD_URL.
+    [global_message] = slack.build_messages(_result(_session(a["key"], "Alice")))
+    assert global_message["text"].startswith("<https://global.example/dash|")
+
+
+def test_a_tenant_with_notifications_off_gets_nothing(world, posts):
+    a = world.tenant("A")
+    _with_hook(a, HOOK_A)
+    _set_prefs(a, on=False)
+    assert tenant_slack.send_tenant_summaries(_result(_session(a["key"], "Alice"))) == {}
+    assert posts == []
