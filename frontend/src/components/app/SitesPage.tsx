@@ -5,6 +5,7 @@ import { ApiError, sites as sitesApi, type PromptKind, type Prompts, type Site }
 import { WIDGET_ORIGIN } from "@/content/site";
 import { buildEmbedScript } from "@/lib/signup";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
+import ParentPicker from "./ParentPicker";
 import PromptChain from "./PromptChain";
 import { useMe } from "./SessionContext";
 
@@ -13,6 +14,7 @@ const PROMPT_LABELS: Record<PromptKind, { title: string; help: string; rows: num
   "base-prompt": { title: "Instructions for the agent", help: "How the agent should behave. Leave it to use the standard instructions.", rows: 6 },
   "intro-message": { title: "First message", help: "What visitors see when they open the chat.", rows: 2 },
 };
+const DEFAULT_PARENT = "COMMON";
 const KINDS = Object.keys(PROMPT_LABELS) as PromptKind[];
 
 function PromptEditor({ siteKey, editable }: { siteKey: string; editable: boolean }) {
@@ -76,8 +78,10 @@ function PromptEditor({ siteKey, editable }: { siteKey: string; editable: boolea
   );
 }
 
-function SiteCard({ site, editable }: { site: Site; editable: boolean }) {
+function SiteCard({ site, editable, parentOptions }: { site: Site; editable: boolean; parentOptions: string[] }) {
   const [open, setOpen] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [parent, setParent] = useState<string | null>(site.parent_key ?? null);
   const [copied, setCopied] = useState(false);
   const snippet = buildEmbedScript("#219EBC");
 
@@ -110,8 +114,19 @@ function SiteCard({ site, editable }: { site: Site; editable: boolean }) {
       </details>
       <details className="mt-3">
         <summary className="cursor-pointer text-sm font-semibold">Where the agent&apos;s prompts come from</summary>
-        <div className="mt-2">
-          <PromptChain siteKey={site.key} />
+        <div className="mt-2 space-y-4">
+          <ParentPicker
+            siteKey={site.key}
+            current={parent}
+            options={parentOptions}
+            disabled={!editable}
+            save={sitesApi.setParent}
+            onSaved={(chain) => {
+              setParent(chain.chain[1] ?? null);
+              setVersion((v) => v + 1);
+            }}
+          />
+          <PromptChain siteKey={site.key} version={version} />
         </div>
       </details>
       <div className="mt-3">
@@ -171,7 +186,7 @@ export default function SitesPage() {
           {error}
         </p>
       )}
-      {list === null ? <p className="text-muted">Loading…</p> : list.map((site) => <SiteCard key={site.id} site={site} editable={enabled} />)}
+      {list === null ? <p className="text-muted">Loading…</p> : list.map((site) => <SiteCard key={site.id} site={site} editable={enabled} parentOptions={[DEFAULT_PARENT, ...list.map((o) => o.key)]} />)}
       <form onSubmit={add} className={`${card} space-y-3`}>
         <h2 className="text-lg font-bold">Add a website</h2>
         {!enabled && <p className="text-sm text-muted">Adding websites needs an enabled account. We&apos;ll enable yours shortly.</p>}

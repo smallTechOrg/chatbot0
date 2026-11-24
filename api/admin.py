@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 from api.guard import guarded
 from api.urls import public_base
 from auth.session import admin_required
-from tenancy import admin
+from tenancy import admin, parents
 
 admin_api_bp = Blueprint("admin_api", __name__, url_prefix="/api/admin")
 
@@ -57,3 +57,11 @@ def reset_link(user_id: int):
 def move_domain(key: str):
     admin.move_domain(key, _body().get("tenant_id"))
     return jsonify({"success": True})
+
+
+@admin_api_bp.put("/domains/<key>/parent")
+@guarded
+@admin_required
+def set_parent(key: str):
+    chain = parents.set_parent(key, _body().get("parent_key"), same_tenant_only=False)
+    return jsonify({"success": True, "chain": chain})

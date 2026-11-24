@@ -12,7 +12,16 @@ const BADGE: Record<string, string> = {
 };
 
 /** Read-only: the parent chain of a website and, for each prompt the bot uses, which website's text is in effect. */
-export default function PromptChain({ siteKey }: { siteKey: string }) {
+export default function PromptChain({
+  siteKey,
+  version = 0,
+  onLoaded,
+}: {
+  siteKey: string;
+  /** Change it to load the chain again (after the parent was changed). */
+  version?: number;
+  onLoaded?: (chain: Chain) => void;
+}) {
   const [data, setData] = useState<Chain | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,13 +30,18 @@ export default function PromptChain({ siteKey }: { siteKey: string }) {
     setData(null);
     setError(null);
     sites.promptChain(siteKey).then(
-      (d) => current && setData(d),
+      (d) => {
+        if (!current) return;
+        setData(d);
+        onLoaded?.(d);
+      },
       (err) => current && setError(err instanceof ApiError ? err.message : "Could not load the prompt hierarchy."),
     );
     return () => {
       current = false;
     };
-  }, [siteKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- onLoaded is a callback the parent may recreate
+  }, [siteKey, version]);
 
   if (error) {
     return (
