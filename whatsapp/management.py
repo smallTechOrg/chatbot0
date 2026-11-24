@@ -6,6 +6,7 @@ them. An admin reaches all. Credentials are never returned.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from core.errors import ServiceError
@@ -14,7 +15,15 @@ from whatsapp import repository
 from whatsapp.client import check_number, send_text
 from whatsapp.input import PHONE_NUMBER_ID, RECIPIENT, SEND_HINTS, clean, clean_id
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_TEST_BODY = "Test message from chatbot0. Reply to chat with the bot."
+
+
+def _log_graph_error(connection_id: str, action: str, result: Any, token: str) -> None:
+    """Leave a trace of a Graph API failure: only ids, Meta's code and message, never credentials."""
+    message = (result.error or "").replace(token, "[token]") if token else (result.error or "")
+    logger.warning(f"[WHATSAPP] connection {connection_id} {action} failed: code={result.code} error={message}")
 
 
 class WhatsAppError(ServiceError):
@@ -68,6 +77,7 @@ def _check(connection_id: str, phone_number_id: str, token: str) -> dict[str, An
             "name_status": name_status,
             "number_status": number_status,
         }
+    _log_graph_error(connection_id, "check", result, token)
     repository.mark_error(connection_id, result.error or "check failed", needs_attention=True)
     return {"ok": False, "error": result.error}
 
@@ -140,6 +150,7 @@ def send_test(user: dict[str, Any], connection_id: str, data: dict[str, Any]) ->
     result = send_text(full["phone_number_id"], full["access_token"], to.lstrip("+"), body or DEFAULT_TEST_BODY)
     if result.ok:
         return {"ok": True, "to": f"+{to.lstrip('+')}"}
+    _log_graph_error(connection_id, "test", result, full["access_token"])
     if result.token_problem:
         repository.mark_error(connection_id, result.error or "send failed", needs_attention=True)
     return {"ok": False, "error": result.error, "hint": SEND_HINTS.get(result.code, "")}
