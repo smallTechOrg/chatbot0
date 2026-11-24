@@ -11,6 +11,7 @@ from api.validators import chat_api_validate, validate_contact_data, validate_hi
 from chat.engine import get_groq_response
 from chat.history import get_history
 from leads.repository import get_all_chat_info, update_chat_info, update_contact_info
+from tenancy import service as tenancy
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,10 @@ def chat_api():
         session_id = data.get("session_id")
         request_type = chat_validation_response.data["request_type"]
         domain = chat_validation_response.data["domain"]
+
+        if not tenancy.conversation_allowed(domain, session_id):
+            # A tenant that is not enabled has used up its trial: a normal reply, and no LLM call.
+            return APIResponse(None, {"response": tenancy.TRIAL_LIMIT_REPLY}).response(HTTPStatus.OK)
 
         bot_response = get_groq_response(input.strip(), session_id, request_type, domain)
         return APIResponse(None, {"response": bot_response}).response(HTTPStatus.OK)
