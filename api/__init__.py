@@ -1,5 +1,6 @@
 """HTTP blueprints. Each module parses a request, calls the code behind it and shapes the response; no SQL here."""
 
+from .auth import auth_bp
 from .chat import chat_bp
 from .health import health_bp
 from .jobs import jobs_bp
@@ -15,3 +16,4 @@ def register_blueprints(app):
     app.register_blueprint(prompt_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(whatsapp_bp)
+    app.register_blueprint(auth_bp)
