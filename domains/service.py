@@ -60,11 +60,13 @@ class DomainService:
         key: str | None = None,
         parent_id: int | None = None,
         contact: dict | None = None,
+        tenant_id: int | None = None,
     ) -> dict:
         """
         Validate, extract and persist a new domain derived from *website_url*.
         *contact* (contact_name, email, mobile) is who signed it up; it is
-        stored on the main row only.
+        stored on the main row only. *tenant_id* is the tenant that owns both rows (None: the legacy
+        sign-up, which the startup migration assigns to smallTech).
 
         Parameters
         ----------
@@ -98,18 +100,19 @@ class DomainService:
             # have written this one and stopped before the www variant, which
             # then no request can reach. Finish it here, so a retry repairs the
             # registration instead of failing on the address that exists.
-            self._ensure_www(address, existing.get("key"), existing.get("parent_id"))
+            self._ensure_www(address, existing.get("key"), existing.get("parent_id"), tenant_id)
             raise DomainAlreadyExistsError(f"A domain for '{address}' already exists.")
 
         if parent_id is not None and self._repo.find_by_id(parent_id) is None:
             raise ParentDomainNotFoundError(f"Parent domain with id={parent_id} does not exist.")
 
         resolved_key = self._resolve_key(key, address)
-        domain = self._repo.create(key=resolved_key, address=address, parent_id=parent_id, **(contact or {}))
+        owner = {"tenant_id": tenant_id} if tenant_id is not None else {}
+        domain = self._repo.create(key=resolved_key, address=address, parent_id=parent_id, **(contact or {}), **owner)
 
         # Register the www variant too, under the same key, so a lookup gives
         # the same key with or without the prefix.
-        self._ensure_www(address, resolved_key, parent_id)
+        self._ensure_www(address, resolved_key, parent_id, tenant_id)
 
         return domain
 
@@ -125,11 +128,12 @@ class DomainService:
     # Static helpers – kept on the class so tests can call them directly.
     # ------------------------------------------------------------------
 
-    def _ensure_www(self, address: str, key: str, parent_id: int | None) -> None:
+    def _ensure_www(self, address: str, key: str, parent_id: int | None, tenant_id: int | None = None) -> None:
         """Add the www variant of *address* if it is not there yet."""
         www_address = f"www.{address}"
         if self._repo.find_by_address(www_address) is None:
-            self._repo.create(key=key, address=www_address, parent_id=parent_id)
+            owner = {"tenant_id": tenant_id} if tenant_id is not None else {}
+            self._repo.create(key=key, address=www_address, parent_id=parent_id, **owner)
 
     @staticmethod
     def extract_address(website_url: str) -> str:
