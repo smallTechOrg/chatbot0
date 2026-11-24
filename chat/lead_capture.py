@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage
 
 from chat.contact_validation import sanitise_contact_info
 from chat.prompts import get_prompt
@@ -124,7 +124,7 @@ def _detect_info_with_llm(message, request_type, domain):
             prompt_content = prompt_content.replace("{message}", message)
         logger.debug("[INFO_DETECTION] prompt is %d characters", len(prompt_content))
         # Create the prompt
-        full_prompt = [SystemMessage(content=prompt_content)]
+        full_prompt = [HumanMessage(content=prompt_content)]
 
         # Get LLM response
         response = llm.invoke(full_prompt)
