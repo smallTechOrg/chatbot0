@@ -14,6 +14,7 @@ const NAV = [
   { href: "/dashboard/", label: "Leads" },
   { href: "/dashboard/sites/", label: "Websites" },
   { href: "/dashboard/whatsapp/", label: "WhatsApp" },
+  { href: "/dashboard/settings/", label: "Settings" },
 ] as const;
 
 /** The frame of every signed-in page: sends visitors without a session to /login/, shows the nav and the trial banner. */

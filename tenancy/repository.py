@@ -32,6 +32,42 @@ def find_tenant_by_name(conn, name: str) -> Tenant | None:
 
 
 @with_connection
+def set_slack_webhook(conn, tenant_id: int, encrypted: str | None) -> bool:
+    """Store the tenant's encrypted Slack webhook (None clears it). False when the tenant does not exist."""
+    with conn.cursor() as cur:
+        cur.execute("UPDATE tenants SET slack_webhook_enc = %s WHERE id = %s", (encrypted, tenant_id))
+        return cur.rowcount > 0
+
+
+@with_connection
+def get_slack_webhook(conn, tenant_id: int) -> str | None:
+    """The tenant's encrypted Slack webhook, or None when not set."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT slack_webhook_enc FROM tenants WHERE id = %s", (tenant_id,))
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+@with_connection
+def slack_routes(conn, domain_keys: list[str]) -> dict[str, tuple[int, str]]:
+    """
+    For each given domain key whose owning tenant has a Slack webhook: {key: (tenant_id, encrypted webhook)}.
+    A key belongs to the tenant of its first domain row, the same rule as domain_key_tenant.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT first.key, t.id, t.slack_webhook_enc
+            FROM (SELECT DISTINCT ON (key) key, tenant_id FROM domains WHERE key = ANY(%s) ORDER BY key, id) first
+            JOIN tenants t ON t.id = first.tenant_id
+            WHERE t.slack_webhook_enc IS NOT NULL
+            """,
+            (domain_keys,),
+        )
+        return {key: (tenant_id, enc) for key, tenant_id, enc in cur.fetchall()}
+
+
+@with_connection
 def list_domains(conn, tenant_id: int) -> list[dict[str, Any]]:
     """The tenant's domain rows (main and www rows), by id."""
     with conn.cursor(row_factory=dict_row) as cur:

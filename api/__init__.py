@@ -9,6 +9,7 @@ from .leads import leads_bp
 from .prompts import prompt_bp
 from .signup import signup_bp
 from .sites import sites_bp
+from .slack_settings import slack_bp
 from .swagger import swaggerui_blueprint
 from .whatsapp import whatsapp_bp
 from .whatsapp_connections import connections_bp
@@ -25,5 +26,6 @@ def register_blueprints(app):
     app.register_blueprint(leads_bp)
     app.register_blueprint(signup_bp)
     app.register_blueprint(sites_bp)
+    app.register_blueprint(slack_bp)
     app.register_blueprint(admin_api_bp)
     app.register_blueprint(connections_bp)

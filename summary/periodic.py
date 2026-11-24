@@ -18,6 +18,7 @@ from core.db_pool import with_connection
 from core.llm import get_chat_model
 from core.paths import PROMPTS_DIR
 from summary.slack import send_summaries_to_slack
+from summary.tenant_slack import send_tenant_summaries
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,9 @@ def periodic_summary() -> dict[str, Any]:
     except Exception as exc:
         logger.exception(f"[PERIODIC_SUMMARY] Slack delivery failed: {exc}")
         result["slack"] = {"sent": 0, "error": str(exc)}
+
+    # Each tenant's own channel gets its own leads' new summaries. Best effort: it never changes what is stamped.
+    result["tenant_slack"] = send_tenant_summaries(result)
 
     # Silent sessions are always stamped; others only once Slack accepted them.
     # Failed sessions have no summary, so they are retried next run.
