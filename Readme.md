@@ -179,6 +179,30 @@ api/            HTTP only: parse the request, call the code above, shape the res
 test/           pytest suite (needs a local PostgreSQL)
 ```
 
+## Accounts, tenants and the dashboard
+
+Every customer is a **tenant** (`tenants`), with users who sign in by **email + password** (`users`; scrypt
+hashes, a signed session cookie, a CSRF header on every state-changing call). A tenant owns many websites
+(`domains.tenant_id`; sub-domains still inherit prompts through `domains.parent`). All domains that existed
+before accounts belong to one enabled `smallTech` tenant.
+
+- **Sign-up** (`/signup/`, `POST /api/signup`) creates a tenant that is **not enabled**, its first user and its
+  website, and signs in. Until a chatbot0 admin enables the tenant (`/admin/`), the widget answers up to
+  `trial_conversation_limit` conversations (default 20) and then replies "This assistant isn't active yet."
+  with no LLM call (`tenancy.conversation_allowed`, also checked for WhatsApp). The dashboard shows the leads
+  read-only for prompts and WhatsApp; enabled tenants can edit prompts and connect WhatsApp.
+- **Pages** (`frontend/`): `/login/`, `/accept/?token=` (invite and reset links), `/dashboard/` (leads),
+  `/dashboard/sites/` (embed snippet, prompts, add a website), `/dashboard/whatsapp/`, `/admin/` (admins).
+- **No email service yet:** an admin creates invite and reset links on `/admin/` and sends them by hand.
+  Links are single use and expire (invites after 7 days, resets after 24 hours).
+- **First admin:** while no admin exists, `/login/` shows "First-time setup", which needs
+  `CHATBOT0_ADMIN_PASSWORD` once. After that the shared password logs nobody in.
+- **API:** `/api/auth/*`, `/api/signup`, `/api/leads*`, `/api/domains*`, `/api/whatsapp/connections*`,
+  `/api/admin/*` (see `/api/docs` for the older, documented ones). Code: `auth/`, `tenancy/`, `leads/`,
+  `api/`.
+- **Legacy endpoints** (`/chat-info*`, `/prompts`, `/prompt`, `/domains*`) stay public until the cutover; set
+  `LOCK_LEGACY_API=true` to make them admin-only (see DEPLOYMENT.md).
+
 ## WhatsApp
 
 chatbot0 also answers on WhatsApp (Meta Cloud API), with the same prompts,
@@ -186,14 +210,15 @@ history, lead capture and Slack summaries as the web widget; WhatsApp chats are
 tagged `channel = whatsapp` in `chat_info`. Replies are pull-only: the customer
 writes first.
 
-1. Set `CHATBOT0_SECRET_KEY` and `CHATBOT0_ADMIN_PASSWORD` in `.env`.
+1. Set `CHATBOT0_SECRET_KEY` (and `CHATBOT0_ADMIN_PASSWORD` for the first-admin setup) in `.env`.
 2. Sign in at `/login/` and connect a number under WhatsApp (phone number ID, domain,
    access token, app secret).
 3. Paste the shown webhook URL and verify token into the Meta app (WhatsApp >
    Configuration), subscribe to `messages`, and message the number.
 
 Code: `whatsapp/` (client, formatting, repository, service),
-`api/whatsapp.py` (webhook), `admin/` (admin pages).
+`api/whatsapp.py` (webhook), `whatsapp/management.py` and `api/whatsapp_connections.py` (the
+connection APIs behind the dashboard's WhatsApp page).
 
 ## Test Flask APIs 
 

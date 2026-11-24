@@ -11,6 +11,7 @@ How the Zer0 sales agent is deployed, monitored and debugged.
 6. [Rollback](#rollback)
 7. [Debugging](#debugging)
 8. [Database Connections](#database-connections)
+9. [Accounts, the first admin and the cutover](#accounts-the-first-admin-and-the-cutover)
 
 ## How Deployment Works
 
@@ -355,6 +356,34 @@ query with nothing else to run on.
 
 ---
 *Last Updated: Nov 2026*
+
+## Accounts, the first admin and the cutover
+
+Accounts need `CHATBOT0_SECRET_KEY` (it signs the session cookie and encrypts WhatsApp credentials; never
+rotate it, stored tokens become unreadable). Without it sign-in answers 503.
+
+**First admin (once per environment):** open `<service URL>/login/`, choose "First-time setup", enter
+`CHATBOT0_ADMIN_PASSWORD` (the Secret Manager value), your email and a new password (10+ characters).
+That creates an admin in the smallTech tenant, and only works while no admin exists. Then sign in, open
+`/admin/` and enable the accounts that should be live. New sign-ups stay on a trial (default 20
+conversations) until enabled; Slack's sign-up message tells you when one arrives.
+
+**Invites and resets:** `/admin/` creates one-time links (`/accept/?token=...`) to send by hand. A reset
+signs the user out everywhere.
+
+**Slack links:** the summary's header links to `DASHBOARD_URL`. Set it to
+`https://chatbot0.smalltech.in/dashboard/` (staging: `<staging URL>/dashboard/`):
+`gh variable set DASHBOARD_URL --env production --body https://chatbot0.smalltech.in/dashboard/`.
+
+**Cutover order (production):**
+1. Create the admin and enable the accounts above; check `/dashboard/` shows your leads.
+2. Set `DASHBOARD_URL` as above.
+3. Merge the zer0-frontend-web PR that turns zer0's `/embed.js` into a stub loader and forwards its
+   `/dashboard` and `/embed` to chatbot0. Only after production serves `/embed.js` and `/embed/` and the
+   new dashboard works (live customer widgets load from that repo).
+4. `gh variable set LOCK_LEGACY_API --env production --body true`, then re-run the deploy. The old public
+   endpoints (`/chat-info*`, `/prompts`, `/prompt`, `/domains*`) then need an admin session (401/403);
+   `/chat`, `/history`, the webhooks and `/jobs/*` are unaffected. Set it back to `false` to undo.
 
 ## WhatsApp
 
