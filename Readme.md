@@ -141,6 +141,23 @@ python app.py
 Now visit http://127.0.0.1:5000/ in your browser.
 For newer APIs visit http://127.0.0.1:5001/api/docs.
 
+## How prompts are chosen (domain hierarchy)
+
+Every website is a row in `domains`; its `parent` column points at another domain (new sign-ups point at `COMMON`,
+which holds the default prompts). For each prompt the bot needs (sales: `base-prompt`, `company`, `intro-message`,
+`fetch-contact-info`; generic: `system`, `fetch-name`) the lookup is:
+
+1. the website's own prompt, if it has one;
+2. otherwise its parent's, then the parent's parent, and so on up the whole chain (at most 10 domains; a parent
+   loop is cut at the first repeated domain);
+3. if no domain in the chain has it, the prompt is empty. `COMMON` is only used when it is in the chain: a domain
+   with no parent does not fall back to it by itself.
+
+Until the chain walk was added (Nov 2026) the lookup looked at the website and its direct parent only. The
+dashboard's Websites page shows, for each website, its lookup order and where every prompt in effect comes from
+("own", "inherited from X", "default (COMMON)"); admins can see this for any website on /admin/.
+`GET /api/domains/<key>/prompt-chain` returns the same data.
+
 ## Frontend (`frontend/`)
 
 Everything a person sees on chatbot0 (the marketing pages, sign-up, and later the
