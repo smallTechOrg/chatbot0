@@ -162,7 +162,11 @@ jobs:
           LOCK_LEGACY_API: "${{ vars.LOCK_LEGACY_API || 'false' }}"
           JOBS_OIDC_AUDIENCE: "${JOBS_AUDIENCE}"
           JOBS_ALLOWED_INVOKERS: "${SCHEDULER_SA}"
-          GROQ_MODEL_NAME: "${{ vars.GROQ_MODEL_NAME || 'openai/gpt-oss-120b' }}"
+          # Groq rate limits are per model. Production answers with gpt-oss-120b and falls back to
+          # gpt-oss-20b when 120b is rate limited; staging uses 20b only, so tests on staging can
+          # never use up production's daily quota (they share one API key).
+          GROQ_MODEL_NAME: "${{ vars.GROQ_MODEL_NAME || (github.ref_name == 'main' && 'openai/gpt-oss-120b' || 'openai/gpt-oss-20b') }}"
+          GROQ_BACKUP_MODEL_NAME: "${{ vars.GROQ_BACKUP_MODEL_NAME || (github.ref_name == 'main' && 'openai/gpt-oss-20b' || '') }}"
           SLACK_TIMEOUT: "10"
           PERIODIC_SUMMARY_TIMEZONE: "Asia/Kolkata"
           DB_APPLICATION_NAME: "${SERVICE}"
