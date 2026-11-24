@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { admin, ApiError, whatsapp, type AdminDomain, type AdminTenant, type WhatsAppConnection } from "@/lib/api";
 import { PLANS } from "@/content/plans";
+import AiProviderSettings from "./AiProviderSettings";
 import PromptChain from "./PromptChain";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
 
@@ -249,6 +250,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Admin</h1>
+      <AiProviderSettings />
       {error && (
         <p role="alert" className={alertError}>
           {error}

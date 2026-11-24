@@ -1,6 +1,7 @@
 """HTTP blueprints. Each module parses a request, calls the code behind it and shapes the response; no SQL here."""
 
 from .admin import admin_api_bp
+from .ai_provider import ai_provider_bp
 from .auth import auth_bp
 from .chat import chat_bp
 from .health import health_bp
@@ -28,4 +29,5 @@ def register_blueprints(app):
     app.register_blueprint(sites_bp)
     app.register_blueprint(slack_bp)
     app.register_blueprint(admin_api_bp)
+    app.register_blueprint(ai_provider_bp)
     app.register_blueprint(connections_bp)
