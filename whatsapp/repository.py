@@ -12,7 +12,7 @@ from core.db_pool import with_connection
 
 # Columns safe to show: never the encrypted credentials.
 _PUBLIC = (
-    "id, phone_number_id, domain_key, display_number, verified_name, verify_token, status, "
+    "id, phone_number_id, domain_key, display_number, verified_name, verify_token, status, name_status, number_status, "
     "last_message_at, last_error, last_error_at, created_at, updated_at"
 )
 
@@ -131,7 +131,14 @@ def update_credentials(
 
 
 @with_connection
-def mark_checked(conn, connection_id: str, display_number: str | None, verified_name: str | None) -> None:
+def mark_checked(
+    conn,
+    connection_id: str,
+    display_number: str | None,
+    verified_name: str | None,
+    name_status: str | None = None,
+    number_status: str | None = None,
+) -> None:
     """The token worked against the Graph API."""
     with conn.cursor() as cur:
         cur.execute(
@@ -139,10 +146,12 @@ def mark_checked(conn, connection_id: str, display_number: str | None, verified_
             UPDATE whatsapp_connections SET
                 display_number = COALESCE(%s, display_number),
                 verified_name  = COALESCE(%s, verified_name),
+                name_status    = %s,
+                number_status  = %s,
                 status = 'active', last_error = NULL, last_error_at = NULL, updated_at = NOW()
             WHERE id = %s;
             """,
-            (display_number, verified_name, connection_id),
+            (display_number, verified_name, name_status, number_status, connection_id),
         )
 
 

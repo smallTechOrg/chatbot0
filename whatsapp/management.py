@@ -56,11 +56,17 @@ def _check(connection_id: str, phone_number_id: str, token: str) -> dict[str, An
     result = check_number(phone_number_id, token)
     if result.ok:
         data = result.data or {}
-        repository.mark_checked(connection_id, data.get("display_phone_number"), data.get("verified_name"))
+        name_status = data.get("name_status")
+        number_status = data.get("status")
+        repository.mark_checked(
+            connection_id, data.get("display_phone_number"), data.get("verified_name"), name_status, number_status
+        )
         return {
             "ok": True,
             "display_number": data.get("display_phone_number"),
             "verified_name": data.get("verified_name"),
+            "name_status": name_status,
+            "number_status": number_status,
         }
     repository.mark_error(connection_id, result.error or "check failed", needs_attention=True)
     return {"ok": False, "error": result.error}

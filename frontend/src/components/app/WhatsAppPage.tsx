@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ApiError, whatsapp, type GraphCheck, type WhatsAppConnection } from "@/lib/api";
 import { alertError, alertOk, btnPrimary, btnSecondary, card, input, label } from "./classes";
 import { useMe } from "./SessionContext";
+import DisplayNameStatus from "./DisplayNameStatus";
 
 function describeCheck(check: GraphCheck | null | undefined): { ok: boolean; text: string } | null {
   if (!check) return null;
@@ -69,9 +70,10 @@ function ConnectionCard({ connection, editable, domainKeys, onChanged }: { conne
         <>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={btnSecondary} onClick={() => void run(async () => describeCheck((await whatsapp.check(connection.id)).check))}>
-              Check the token
+              Check token now
             </button>
           </div>
+          <DisplayNameStatus nameStatus={connection.name_status} lastError={connection.last_error} />
           <form onSubmit={replace} className="space-y-3">
             <h3 className="text-sm font-bold">Replace credentials</h3>
             <div className="grid gap-3 sm:grid-cols-3">
