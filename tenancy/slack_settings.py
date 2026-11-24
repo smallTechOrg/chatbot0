@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
+from urllib.parse import urlparse
 
 from core import crypto
 from core.errors import ServiceError
@@ -16,6 +18,8 @@ logger = logging.getLogger(__name__)
 # an arbitrary address (and a pasted secret of another kind is not stored).
 WEBHOOK_PREFIX = "https://hooks.slack.com/services/"
 MAX_URL_LENGTH = 300
+#: Where the header of a tenant's Slack summary links to until the tenant enters its own link.
+DEFAULT_DASHBOARD_LINK = "https://chatbot0.smalltech.in/dashboard/"
 
 
 class SlackSettingsError(ServiceError):
@@ -37,16 +41,56 @@ def _require_enabled(user: dict[str, Any]) -> dict[str, Any]:
 
 
 def status(user: dict[str, Any]) -> dict[str, Any]:
-    """Only whether a webhook is set. The URL is never shown back."""
+    """What the settings page shows. The webhook URL is never included, only whether one is set."""
     tenant = _tenant_for(user)
-    return {"configured": repository.get_slack_webhook(tenant["id"]) is not None, "enabled": tenant["enabled"]}
+    prefs = repository.get_slack_prefs(tenant["id"]) or {}
+    return {
+        "enabled": tenant["enabled"],
+        "configured": bool(prefs.get("configured")),
+        "notifications_on": bool(prefs.get("notifications_on", True)),
+        "dashboard_url": prefs.get("dashboard_url") or DEFAULT_DASHBOARD_LINK,
+        "dashboard_url_is_default": not prefs.get("dashboard_url"),
+        "default_dashboard_url": DEFAULT_DASHBOARD_LINK,
+    }
 
 
-def save(user: dict[str, Any], url: Any) -> None:
+def _check_https_url(raw: Any) -> str:
+    """An https URL with a host, no spaces and none of the characters Slack reads as link markup."""
+    url = raw.strip() if isinstance(raw, str) else ""
+    parsed = urlparse(url)
+    bad = (not url, len(url) > MAX_URL_LENGTH, parsed.scheme != "https", not parsed.hostname)
+    if any(bad) or re.search(r"[\s<>|]", url):
+        raise SlackSettingsError("Enter the dashboard link as a full https:// address.", 422)
+    return url
+
+
+def save(user: dict[str, Any], data: dict[str, Any]) -> None:
+    """
+    Change any of: webhook_url (a Slack incoming webhook), notifications_on (true/false) and dashboard_url
+    (an https address; "" goes back to the default). Fields that are left out stay as they are.
+    """
     tenant = _require_enabled(user)
-    if not isinstance(url, str) or not url.strip().startswith(WEBHOOK_PREFIX) or len(url.strip()) > MAX_URL_LENGTH:
-        raise SlackSettingsError(f"Enter a Slack incoming webhook URL (it starts with {WEBHOOK_PREFIX}).", 422)
-    repository.set_slack_webhook(tenant["id"], crypto.encrypt(url.strip()))
+    webhook = data.get("webhook_url")
+    if webhook is not None:
+        if (
+            not isinstance(webhook, str)
+            or not webhook.strip().startswith(WEBHOOK_PREFIX)
+            or len(webhook) > MAX_URL_LENGTH
+        ):
+            raise SlackSettingsError(f"Enter a Slack incoming webhook URL (it starts with {WEBHOOK_PREFIX}).", 422)
+        if re.search(r"\s", webhook.strip()):
+            raise SlackSettingsError("The webhook URL must not contain spaces.", 422)
+    on = data.get("notifications_on")
+    if on is not None and not isinstance(on, bool):
+        raise SlackSettingsError("notifications_on must be true or false.", 422)
+    link = data.get("dashboard_url")
+    clear_link = link is not None and link == ""
+    new_link = None if link is None or clear_link else _check_https_url(link)
+    if webhook is None and on is None and link is None:
+        raise SlackSettingsError("Send webhook_url, notifications_on or dashboard_url.", 400)
+    if webhook is not None:
+        repository.set_slack_webhook(tenant["id"], crypto.encrypt(webhook.strip()))
+    repository.set_slack_prefs(tenant["id"], on, new_link, clear_link)
 
 
 def clear(user: dict[str, Any]) -> None:

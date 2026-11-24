@@ -37,7 +37,9 @@ def _stored(tenant_id):
 
 def test_it_starts_not_set(world, client):
     _, h = _signed_in(world, client)
-    assert client.get("/api/slack", headers=h).get_json() == {"configured": False, "enabled": True}
+    body = client.get("/api/slack", headers=h).get_json()
+    assert body["configured"] is False and body["enabled"] is True and body["notifications_on"] is True
+    assert body["dashboard_url"] == slack_settings.DEFAULT_DASHBOARD_LINK and body["dashboard_url_is_default"]
 
 
 def test_saving_stores_it_encrypted_and_never_shows_it_back(world, client):
@@ -52,7 +54,7 @@ def test_saving_stores_it_encrypted_and_never_shows_it_back(world, client):
 
 
 @pytest.mark.parametrize(
-    "bad", ["", "not a url", "http://hooks.slack.com/services/a/b/c", "https://evil.example/services/a", None, 5]
+    "bad", ["", "not a url", "http://hooks.slack.com/services/a/b/c", "https://evil.example/services/a", 5]
 )
 def test_only_slack_webhook_urls_are_accepted(world, client, bad):
     t, h = _signed_in(world, client)
@@ -106,3 +108,48 @@ def test_each_tenant_sees_and_tests_only_its_own(world, client, posts):
 def test_it_needs_a_session(client):
     assert client.get("/api/slack").status_code == 401
     assert client.put("/api/slack", json={"webhook_url": HOOK}).status_code == 401
+
+
+def test_nothing_to_change_is_a_400(world, client):
+    _, h = _signed_in(world, client)
+    assert client.put("/api/slack", json={}, headers=h).status_code == 400
+
+
+def test_the_dashboard_link_is_saved_shown_and_reset(world, client):
+    _, h = _signed_in(world, client)
+    res = client.put("/api/slack", json={"dashboard_url": "https://crm.acme.test/leads"}, headers=h)
+    assert res.status_code == 200 and res.get_json()["dashboard_url"] == "https://crm.acme.test/leads"
+    assert client.get("/api/slack", headers=h).get_json()["dashboard_url_is_default"] is False
+    client.put("/api/slack", json={"dashboard_url": ""}, headers=h)
+    again = client.get("/api/slack", headers=h).get_json()
+    assert again["dashboard_url"] == slack_settings.DEFAULT_DASHBOARD_LINK and again["dashboard_url_is_default"]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "http://crm.acme.test",
+        "crm.acme.test",
+        "https://",
+        "javascript:alert(1)",
+        "https://a.test/x y",
+        "https://a.test/<b>",
+        "https://a.test/x|y",
+        7,
+    ],
+)
+def test_the_dashboard_link_must_be_an_https_url(world, client, bad):
+    _, h = _signed_in(world, client)
+    assert client.put("/api/slack", json={"dashboard_url": bad}, headers=h).status_code == 422
+
+
+def test_notifications_can_be_switched_off_and_on_keeping_the_webhook(world, client):
+    t, h = _signed_in(world, client)
+    client.put("/api/slack", json={"webhook_url": HOOK}, headers=h)
+    client.put("/api/slack", json={"notifications_on": False}, headers=h)
+    body = client.get("/api/slack", headers=h).get_json()
+    assert body["notifications_on"] is False and body["configured"] is True
+    assert slack_settings.webhook_for(t["id"]) == HOOK
+    client.put("/api/slack", json={"notifications_on": True}, headers=h)
+    assert client.get("/api/slack", headers=h).get_json()["notifications_on"] is True
+    assert client.put("/api/slack", json={"notifications_on": "yes"}, headers=h).status_code == 422

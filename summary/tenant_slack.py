@@ -9,7 +9,7 @@ from typing import Any
 
 from summary.slack import build_messages, post_to_slack
 from tenancy import repository
-from tenancy.slack_settings import webhook_for
+from tenancy.slack_settings import DEFAULT_DASHBOARD_LINK, webhook_for
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +33,17 @@ def _deliver(result: dict[str, Any]) -> dict[int, int]:
         return {}
     routes = repository.slack_routes(sorted({s["domain"] for s in fresh}))
     by_tenant: dict[int, list[dict[str, Any]]] = {}
+    links: dict[int, str | None] = {}
     for session in fresh:
         route = routes.get(session["domain"])
         if route:
             by_tenant.setdefault(route[0], []).append(session)
+            links[route[0]] = route[2]
 
     sent: dict[int, int] = {}
     for tenant_id, sessions in by_tenant.items():
-        messages = build_messages({**result, "sessions": sessions})
+        link = links[tenant_id] or DEFAULT_DASHBOARD_LINK
+        messages = build_messages({**result, "sessions": sessions, "dashboard_url": link})
         url = webhook_for(tenant_id) if messages else None
         if not url:
             continue

@@ -21,8 +21,9 @@ def get_status():
 @login_required
 def put_webhook():
     data = request.get_json(silent=True)
-    slack_settings.save(current_user(), data.get("webhook_url") if isinstance(data, dict) else None)
-    return jsonify({"success": True, "configured": True})
+    user = current_user()
+    slack_settings.save(user, data if isinstance(data, dict) else {})
+    return jsonify({"success": True, **slack_settings.status(user)})
 
 
 @slack_bp.delete("")
