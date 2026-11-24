@@ -10,6 +10,7 @@ from api.models import APIResponse
 from api.validators import chat_api_validate, validate_contact_data, validate_history_data, validate_update_data
 from chat.engine import get_groq_response
 from chat.history import get_history
+from chat.outage import BUSY_REPLY, LLMUnavailable
 from leads.repository import get_all_chat_info, update_chat_info, update_contact_info
 from tenancy import service as tenancy
 
@@ -39,7 +40,12 @@ def chat_api():
             # A tenant that is not enabled has used up its trial: a normal reply, and no LLM call.
             return APIResponse(None, {"response": tenancy.TRIAL_LIMIT_REPLY}).response(HTTPStatus.OK)
 
-        bot_response = get_groq_response(input.strip(), session_id, request_type, domain)
+        try:
+            bot_response = get_groq_response(input.strip(), session_id, request_type, domain)
+        except LLMUnavailable:
+            # Logged and alerted by the engine. The widget shows this as a normal reply; "degraded" lets
+            # a client tell it apart.
+            return APIResponse(None, {"response": BUSY_REPLY, "degraded": True}).response(HTTPStatus.OK)
         return APIResponse(None, {"response": bot_response}).response(HTTPStatus.OK)
     except HTTPException:
         # A bad request already has the correct status code. Do not change it.
