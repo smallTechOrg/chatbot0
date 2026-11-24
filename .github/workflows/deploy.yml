@@ -71,7 +71,7 @@ jobs:
     needs: test
     runs-on: ubuntu-24.04   # ubuntu-latest (26.04) has no Python 3.12.10 build
     # main deploys with the production GitHub environment, staging with
-    # staging. Each holds the variables GCP_PROJECT, GCP_SA_KEY (the
+    # staging. Each holds the variables GCP_PROJECT, GCP_SA_KEY (a secret when set, else a variable; the
     # github-deployer service account), APP_ENV, DB_NAME and DASHBOARD_URL.
     environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
     env:
@@ -106,7 +106,7 @@ jobs:
           missing=""
           for setting in \
             "GCP_PROJECT=${{ vars.GCP_PROJECT != '' }}" \
-            "GCP_SA_KEY=${{ vars.GCP_SA_KEY != '' }}" \
+            "GCP_SA_KEY=${{ (secrets.GCP_SA_KEY || vars.GCP_SA_KEY) != '' }}" \
             "APP_ENV=${{ vars.APP_ENV != '' }}" \
             "DB_NAME=${{ vars.DB_NAME != '' }}" \
             "DASHBOARD_URL=${{ vars.DASHBOARD_URL != '' }}" \
@@ -129,7 +129,7 @@ jobs:
       - uses: google-github-actions/auth@v2
         with:
           project_id: ${{ vars.GCP_PROJECT }}
-          credentials_json: ${{ vars.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_SA_KEY || vars.GCP_SA_KEY }}
 
       - uses: google-github-actions/setup-gcloud@v2
 
