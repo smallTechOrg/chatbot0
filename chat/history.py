@@ -81,3 +81,8 @@ def get_history(session_id: str, domain):
         status = HTTPStatus.CREATED
 
     return {"session_id": session_id, "history": _message_mapping(messages)}, status
+
+
+def read_history(session_id: str) -> list[dict[str, str]]:
+    """The messages of a session, read-only. Unlike get_history it never adds the intro message."""
+    return _message_mapping(get_session_history(session_id).get_messages())

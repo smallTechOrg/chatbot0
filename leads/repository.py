@@ -131,3 +131,53 @@ def update_chat_info(
     except Exception as e:
         logger.error(f"[DATABASE ERROR] Failed to update lead for {session_id}: {e!s}")
         raise
+
+
+# -- tenant-scoped reads (the /api/leads* endpoints) ------------------------------------------------------
+
+
+@with_connection
+def list_leads(conn, tenant_id: int | None = None) -> list[dict[str, Any]]:
+    """Leads of one tenant (None: every tenant), each with its tenant's name. Same rows as the legacy list."""
+    query = sql.SQL("""
+            SELECT
+                session_id,
+                COALESCE(contact_name, '') as name,
+                COALESCE(email, '') as email,
+                COALESCE(mobile, '') as mobile_number,
+                COALESCE(country, '') as country,
+                COALESCE(status, 'OPEN') as status,
+                COALESCE(remarks, '') as remarks,
+                COALESCE(summary, '') as summary,
+                domain,
+                COALESCE(channel, 'web') as channel,
+                created_at as time,
+                (SELECT d.tenant_id FROM domains d WHERE d.key = chat_info.domain ORDER BY d.id LIMIT 1) AS tenant_id,
+                (SELECT t.name FROM domains d JOIN tenants t ON t.id = d.tenant_id
+                  WHERE d.key = chat_info.domain ORDER BY d.id LIMIT 1) AS tenant
+            FROM chat_info
+            WHERE is_active is TRUE
+              AND (%(tenant)s::int IS NULL
+                   OR domain IN (SELECT key FROM domains WHERE tenant_id = %(tenant)s::int))
+              AND EXISTS (
+                  SELECT 1 FROM {table} h
+                  WHERE h.session_id::text = chat_info.session_id
+                    AND h.message->>'type' = 'human'
+              )
+            ORDER BY created_at DESC;
+        """).format(table=sql.Identifier(config.table_name))
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(query, {"tenant": tenant_id})
+        return cur.fetchall()
+
+
+@with_connection
+def find_lead_owner(conn, session_id: str) -> dict[str, Any] | None:
+    """{"tenant_id": int | None} for an existing lead (None tenant: its domain has no tenant); None if no such lead."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            "SELECT (SELECT d.tenant_id FROM domains d WHERE d.key = c.domain ORDER BY d.id LIMIT 1) AS tenant_id "
+            "FROM chat_info c WHERE c.session_id = %s",
+            (session_id,),
+        )
+        return cur.fetchone()

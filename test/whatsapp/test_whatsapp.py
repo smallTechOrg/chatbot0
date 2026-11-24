@@ -269,3 +269,24 @@ def test_split_message_respects_limit():
     parts = split_message(text, limit=300)
     assert all(len(p) <= 300 for p in parts) and len(parts) > 1
     assert split_message("short") == ["short"] and split_message("  ") == []
+
+
+def test_a_tenant_over_its_trial_cap_gets_the_fixed_reply_and_no_llm_call(client, world, stubs):
+    from tenancy import service as tenancy
+
+    t = world.tenant("WA trial", enabled=False, limit=1)
+    world.lead(t["key"])  # the trial's one conversation is used
+    row = repository.create_connection(str(uuid.uuid4().int)[:16], t["key"], TOKEN, APP_SECRET)
+    try:
+        assert post(client, row, payload(row["phone_number_id"], "Hello?")).status_code == 200
+        assert stubs["llm"] == []
+        assert [s[3] for s in stubs["sent"]] == [tenancy.TRIAL_LIMIT_REPLY]
+        assert (
+            _sql(
+                "SELECT 1 FROM chat_info WHERE session_id = %s;",
+                (service.session_id_for(row["phone_number_id"], WA_ID),),
+            )
+            == []
+        )
+    finally:
+        _sql("DELETE FROM whatsapp_connections WHERE id = %s;", (row["id"],))
