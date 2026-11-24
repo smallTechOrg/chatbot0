@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import "@fontsource-variable/outfit";
 
-// The widget's font (widget.module.css reads --font-outfit).
-const outfit = Outfit({ variable: "--font-outfit", subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
+// The widget's font (widget.module.css reads --font-outfit), self-hosted like the site font.
+const FONT = { "--font-outfit": '"Outfit Variable"' } as React.CSSProperties;
 
 export const metadata: Metadata = {
   title: { absolute: "chatbot0 chat" },
@@ -10,5 +10,6 @@ export const metadata: Metadata = {
 };
 
 export default function EmbedLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <div className={outfit.variable}>{children}</div>;
+  // eslint-disable-next-line react/forbid-dom-props -- sets the font variable the widget CSS reads
+  return <div style={FONT}>{children}</div>;
 }

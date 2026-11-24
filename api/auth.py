@@ -1,12 +1,13 @@
 """Auth endpoints under /api/auth: status, bootstrap, login, logout, me, accept (invite/reset link)."""
 
+import functools
 import logging
 from typing import Any
 
 from flask import Blueprint, current_app, jsonify, request
 
+from api.guard import guarded
 from auth import service
-from auth.service import AuthError
 from auth.session import csrf_token, current_user, end_session, login_required, start_session
 from tenancy import repository as tenants
 
@@ -30,20 +31,15 @@ def _signed_in(user: dict[str, Any]):
 
 
 def _handle(view):
-    """Run a view and answer AuthError with its status; anything else is a 500 (logged)."""
+    """Sessions must be available (else 503), then the shared error boundary."""
+    inner = guarded(view)
 
+    @functools.wraps(view)
     def wrapper(*args: Any, **kwargs: Any):
         if not _sessions_available():
             return jsonify({"success": False, "error": "Accounts are not enabled on this server."}), 503
-        try:
-            return view(*args, **kwargs)
-        except AuthError as exc:
-            return jsonify({"success": False, "error": exc.message}), exc.status
-        except Exception:
-            logger.exception("[AUTH] unhandled error")
-            return jsonify({"success": False, "error": "Something went wrong."}), 500
+        return inner(*args, **kwargs)
 
-    wrapper.__name__ = view.__name__
     return wrapper
 
 

@@ -55,3 +55,9 @@ Run started 2026-11-23 22:22 IST. Harness-improvement log, not an app changelog.
   Lesson: read the library, not the comment.
 - **zer0's `/chat` page not ported.** It collides with the `POST /chat` API path (and `next dev`
   rewrites), and nothing links to it. Left to the zer0 PR to delete.
+- **Google Fonts at build time flaked.** Symptom: `next/font` "Cannot read properties of null" in the Docker
+  build and in CI (twice in a row, then green on rerun). Cause: `next/font/google` fetches the CSS from
+  fonts.googleapis.com during `next build`. Fix: self-host Montserrat and Outfit from the
+  `@fontsource-variable/*` npm packages. Lesson: a build must not depend on third-party hosts at build time.
+- **Check what a "gap" means before deleting.** The plan deletes the Jinja admin in slice 4, but the React admin
+  is slice 6; deleting it first would leave no way to manage WhatsApp. Deletion moved to slice 6.
