@@ -324,6 +324,70 @@ def ensure_tenancy_tables_exist(sync_connection):
     logger.info("Tenancy tables created/verified successfully.")
 
 
+SMALLTECH_KEY = "SMALLTECH"
+SMALLTECH_ADDRESS = "smalltech.in"
+SMALLTECH_SUBDOMAINS_MIGRATION = "2026-11-24-smalltech-subdomains-under-smalltech"
+
+
+def _smalltech_subdomains_under_smalltech(cur):
+    """
+    Owner-approved, one-time: the smalltech.in properties inherit from SMALLTECH instead of COMMON.
+
+    Only rows that are all of: a *.smalltech.in address, a key other than SMALLTECH (so www.smalltech.in, which
+    shares the SMALLTECH key, is left alone), parented to COMMON, and owned by the smallTech tenant. Nothing
+    changes when the SMALLTECH row or the tenant does not exist (a fresh database).
+    """
+    cur.execute(
+        "SELECT id FROM domains WHERE key = %s AND address = %s ORDER BY id LIMIT 1",
+        (SMALLTECH_KEY, SMALLTECH_ADDRESS),
+    )
+    target = cur.fetchone()
+    if target is None:
+        logger.info(f"Data migration {SMALLTECH_SUBDOMAINS_MIGRATION}: no {SMALLTECH_KEY} row, nothing re-parented.")
+        return
+    cur.execute(
+        """
+        UPDATE domains SET parent = %s
+        WHERE address LIKE %s
+          AND key <> %s
+          AND parent IN (SELECT id FROM domains WHERE key = %s)
+          AND tenant_id = (SELECT id FROM tenants WHERE name = %s ORDER BY id LIMIT 1)
+        RETURNING key, address
+        """,
+        (target[0], f"%.{SMALLTECH_ADDRESS}", SMALLTECH_KEY, config.DEFAULT_DOMAIN, SMALLTECH_TENANT),
+    )
+    rows = sorted(cur.fetchall())
+    for key, address in rows:
+        logger.info(
+            f"Data migration {SMALLTECH_SUBDOMAINS_MIGRATION}: re-parented key={key} address={address} "
+            f"to {SMALLTECH_KEY}"
+        )
+    logger.info(f"Data migration {SMALLTECH_SUBDOMAINS_MIGRATION}: {len(rows)} row(s) re-parented.")
+
+
+#: (name, function(cursor)), in order. A name is never reused or changed once released.
+DATA_MIGRATIONS = ((SMALLTECH_SUBDOMAINS_MIGRATION, _smalltech_subdomains_under_smalltech),)
+
+
+def ensure_data_migrations_applied(sync_connection, migrations=None):
+    """
+    Run each named data migration exactly once. Unlike the idempotent table steps, a data migration changes
+    rows people may edit later, so it must never run again: its name is recorded in data_migrations in the
+    same transaction as its changes. A second instance starting at the same time waits on the insert, then
+    finds the name taken and skips it.
+    """
+    with sync_connection.cursor() as cur:
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS data_migrations ("
+            "name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"
+        )
+        for name, migrate in DATA_MIGRATIONS if migrations is None else migrations:
+            cur.execute("INSERT INTO data_migrations (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (name,))
+            if cur.rowcount == 1:
+                migrate(cur)
+    logger.info("Data migrations checked.")
+
+
 def _create_schema(sync_connection):
     """
     Create every table this app needs, on the given connection.
@@ -338,6 +402,7 @@ def _create_schema(sync_connection):
         ensure_domains_table_exists,
         ensure_whatsapp_tables_exist,
         ensure_tenancy_tables_exist,
+        ensure_data_migrations_applied,
         check_and_insert_default_prompts,
     )
     for step in steps:

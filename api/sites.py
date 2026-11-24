@@ -49,3 +49,10 @@ def put_prompts(key: str):
 @login_required
 def get_prompt_chain(key: str):
     return jsonify(sites.prompt_chain(current_user(), key))
+
+
+@sites_bp.put("/<key>/parent")
+@guarded
+@login_required
+def put_parent(key: str):
+    return jsonify({"success": True, "chain": sites.set_parent(current_user(), key, _body().get("parent_key"))})

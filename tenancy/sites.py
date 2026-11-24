@@ -16,7 +16,7 @@ from chat.prompt_store import upsert_prompt
 from chat.prompts import resolve_prompt
 from domains import DomainAlreadyExistsError, DomainRepository, DomainService, InvalidWebsiteURLError
 from summary.slack import notify_signup
-from tenancy import repository
+from tenancy import parents, repository
 
 logger = logging.getLogger(__name__)
 
@@ -158,3 +158,15 @@ def set_prompts(user: dict[str, Any], key: str, data: dict[str, Any]) -> None:
             raise SiteError(f"{kind} must be text of 1 to {MAX_PROMPT} characters.", 400)
     for kind, text in changes.items():
         upsert_prompt(key, AGENT, kind, text.strip())
+
+
+def set_parent(user: dict[str, Any], key: str, parent_key: Any) -> dict[str, Any]:
+    """
+    Set the parent of one of the user's websites: another website of the same tenant, or COMMON. Enabled tenants
+    only. Returns the new prompt chain. (An admin can use /api/admin/domains/<key>/parent for any website.)
+    """
+    _owned_key(user, key)
+    tenant = repository.find_tenant(user["tenant_id"])
+    if not user["is_admin"] and not (tenant and tenant["enabled"]):
+        raise SiteError("Your account is not active yet, so the hierarchy is read-only.", 403)
+    return parents.set_parent(key, parent_key, same_tenant_only=True)

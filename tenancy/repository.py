@@ -194,8 +194,9 @@ def list_sites(conn, tenant_id: int) -> list[dict[str, Any]]:
     """The tenant's websites: its main domain rows (the www variants are not listed)."""
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
-            "SELECT id, key, address, created_at FROM domains "
-            "WHERE tenant_id = %s AND address NOT LIKE 'www.%%' ORDER BY id",
+            "SELECT d.id, d.key, d.address, d.created_at, p.key AS parent_key FROM domains d "
+            "LEFT JOIN domains p ON p.id = d.parent "
+            "WHERE d.tenant_id = %s AND d.address NOT LIKE 'www.%%' ORDER BY d.id",
             (tenant_id,),
         )
         return cur.fetchall()
@@ -295,3 +296,23 @@ def domain_keys(conn, tenant_id: int | None = None) -> list[str]:
             {"t": tenant_id},
         )
         return [r[0] for r in cur.fetchall()]
+
+
+@with_connection
+def parent_row_id(conn, key: str) -> int | None:
+    """The row a child points its `parent` at for this key: the main row (not the www alias), else the first row."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM domains WHERE key = %s ORDER BY (address LIKE 'www.%%'), id LIMIT 1",
+            (key,),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+@with_connection
+def set_key_parent(conn, key: str, parent_id: int) -> int:
+    """Point every domain row with this key (main and www alias) at one parent row. Returns how many rows changed."""
+    with conn.cursor() as cur:
+        cur.execute("UPDATE domains SET parent = %s WHERE key = %s", (parent_id, key))
+        return cur.rowcount
