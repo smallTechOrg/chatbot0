@@ -233,3 +233,19 @@ def test_the_display_name_status_is_stored_and_returned(app, setup, graph):
     graph["check"] = GraphResult(True, {"display_phone_number": "+1 555 0100"})
     client.post(f"/api/whatsapp/connections/{cid}/check", headers=csrf)
     assert client.get(f"/api/whatsapp/connections/{cid}").get_json()["connection"]["name_status"] is None
+
+
+def test_graph_errors_from_check_and_test_are_logged_without_the_token(app, setup, graph, caplog):
+    client, csrf = as_user(app, "a@wa-test.invalid")
+    cid = connect(client, csrf, setup["a"]["key"]).get_json()["connection"]["id"]
+    graph["check"] = GraphResult(False, error="HTTP 400: auth error (code 190)", code=190)
+    graph["send"] = GraphResult(
+        False, error=f"HTTP 400: display name needs approval {TOKEN} (code 131037)", code=131037
+    )
+    with caplog.at_level("WARNING", logger="whatsapp.management"):
+        client.post(f"/api/whatsapp/connections/{cid}/check", headers=csrf)
+        client.post(f"/api/whatsapp/connections/{cid}/test", json={"to": "919876543210"}, headers=csrf)
+    lines = [r.getMessage() for r in caplog.records if r.levelname == "WARNING" and r.name == "whatsapp.management"]
+    assert any(cid in m and "check" in m and "code=190" in m and "auth error" in m for m in lines)
+    assert any(cid in m and "test" in m and "code=131037" in m for m in lines)
+    assert not any(TOKEN in m or SECRET in m for m in lines)
