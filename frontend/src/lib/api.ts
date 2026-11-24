@@ -278,6 +278,9 @@ export interface WhatsAppConnection {
   verified_name: string | null;
   verify_token: string;
   status: string;
+  /** Meta's display-name review of the number, as of the last token check. */
+  name_status: string | null;
+  number_status: string | null;
   last_message_at: string | null;
   last_error: string | null;
   webhook_url: string;
@@ -288,6 +291,8 @@ export interface GraphCheck {
   error?: string;
   display_number?: string;
   verified_name?: string;
+  name_status?: string | null;
+  number_status?: string | null;
 }
 
 export interface NewConnection {

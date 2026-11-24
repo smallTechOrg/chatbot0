@@ -64,7 +64,8 @@ def _call(method: str, path: str, token: str, **kwargs) -> GraphResult:
         err = body.get("error") or {}
         code = err.get("code")
         message = err.get("error_user_msg") or err.get("message") or resp.text[:200]
-        return GraphResult(False, data=body, error=f"HTTP {resp.status_code}: {message}"[:500], code=code)
+        suffix = f" (code {code})" if code else ""
+        return GraphResult(False, data=body, error=f"HTTP {resp.status_code}: {message}{suffix}"[:500], code=code)
     return GraphResult(True, data=body)
 
 
@@ -84,6 +85,14 @@ def send_text(phone_number_id: str, token: str, to: str, body: str) -> GraphResu
     )
 
 
+CHECK_FIELDS = (
+    "display_phone_number,verified_name,name_status,new_name_status,status,quality_rating,code_verification_status"
+)
+
+
 def check_number(phone_number_id: str, token: str) -> GraphResult:
-    """Read the number's display number and verified name: proves the token works for it."""
-    return _call("GET", phone_number_id, token, params={"fields": "display_phone_number,verified_name"})
+    """
+    Read the number's display number, verified name and display-name review status:
+    proves the token works for it. Meta leaves out fields it has no value for.
+    """
+    return _call("GET", phone_number_id, token, params={"fields": CHECK_FIELDS})
