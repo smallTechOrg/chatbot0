@@ -223,6 +223,72 @@ def ensure_whatsapp_tables_exist(sync_connection):
     logger.info("Tables 'whatsapp_connections' and 'whatsapp_messages' created/verified successfully.")
 
 
+SMALLTECH_TENANT = "smallTech"
+
+
+def ensure_tenancy_tables_exist(sync_connection):
+    """
+    Tenants and their users (see auth/ and tenancy/), and the migration that puts every existing domain
+    under one enabled "smallTech" tenant. Idempotent: safe on every start, and it changes nothing for
+    domains that already have a tenant.
+
+    domains.key is not unique (the www row shares its key), so a lead belongs to a tenant through
+    chat_info.domain IN (SELECT key FROM domains WHERE tenant_id = ...).
+    """
+    with sync_connection.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tenants (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                enabled_at TIMESTAMPTZ,
+                trial_conversation_limit INT NOT NULL DEFAULT 20,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                tenant_id INT NOT NULL REFERENCES tenants(id),
+                email TEXT NOT NULL,
+                password_hash TEXT,
+                is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+                session_version INT NOT NULL DEFAULT 1,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                last_login_at TIMESTAMPTZ
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower ON users (lower(email));
+            CREATE TABLE IF NOT EXISTS user_tokens (
+                token_hash TEXT PRIMARY KEY,
+                user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                purpose TEXT NOT NULL CHECK (purpose IN ('invite', 'reset')),
+                expires_at TIMESTAMPTZ NOT NULL,
+                used_at TIMESTAMPTZ
+            );
+            CREATE TABLE IF NOT EXISTS login_attempts (
+                id BIGSERIAL PRIMARY KEY,
+                email TEXT NOT NULL,
+                attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_login_attempts_email_time ON login_attempts (email, attempted_at);
+            ALTER TABLE domains ADD COLUMN IF NOT EXISTS tenant_id INT REFERENCES tenants(id);
+            """
+        )
+        cur.execute(
+            """
+            INSERT INTO tenants (name, enabled, enabled_at)
+            SELECT %s, TRUE, NOW()
+            WHERE NOT EXISTS (SELECT 1 FROM tenants WHERE name = %s)
+            """,
+            (SMALLTECH_TENANT, SMALLTECH_TENANT),
+        )
+        cur.execute(
+            "UPDATE domains SET tenant_id = (SELECT id FROM tenants WHERE name = %s ORDER BY id LIMIT 1) "
+            "WHERE tenant_id IS NULL",
+            (SMALLTECH_TENANT,),
+        )
+    logger.info("Tenancy tables created/verified successfully.")
+
+
 def _create_schema(sync_connection):
     """
     Create every table this app needs, on the given connection.
@@ -236,6 +302,7 @@ def _create_schema(sync_connection):
         ensure_prompts_table_exists,
         ensure_domains_table_exists,
         ensure_whatsapp_tables_exist,
+        ensure_tenancy_tables_exist,
         check_and_insert_default_prompts,
     )
     for step in steps:
